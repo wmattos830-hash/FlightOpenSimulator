@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flight Open Simulator</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'MS Sans Serif', Arial, sans-serif; touch-action: none; }
+        canvas { display: block; }
+        
+        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: none; }
+
+        #hud-top { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 20px; color: #0f0; }
+        .hud-box { text-align: center; min-width: 60px; text-shadow: 0 0 4px rgba(0,0,0,0.8); }
+        .hud-box span { font-size: 18px; font-weight: bold; display: block; }
+        .hud-box label { font-size: 10px; color: #ccc; }
+
+        #hud-bottom { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 10; pointer-events: none; }
+        #hud-compass, #hud-attitude, #hud-radar { position: relative; width: 140px; height: 140px; }
+        
+        #hud-compass { text-align: center; }
+        #compass-circle { width: 140px; height: 140px; border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,0.6); position: relative; overflow: hidden; margin-bottom: 5px; }
+        #compass-rot { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .c-mark { position: absolute; color: #fff; font-size: 14px; font-weight: bold; text-shadow: 0 0 2px #000; }
+        #compass-plane-mark { position: absolute; top: -2px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 14px solid #ffff00; z-index: 10; }
+        #compass-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 6px; height: 6px; background: #ffff00; border-radius: 50%; z-index: 10; }
+        #compass-line { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); width: 2px; height: 40%; background: rgba(255,255,0,0.3); z-index: 5; }
+        #compass-hdg { color: #fff; font-size: 14px; font-weight: bold; text-shadow: 0 0 2px #000; }
+
+        #hud-attitude { border-radius: 50%; background: #111; border: 2px solid #333; overflow: hidden; }
+        #att-rotate { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; transform: translate(-50%, -50%); }
+        #att-pitch { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; transform: translate(-50%, -50%); }
+        #att-ball { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, #4da6ff 0%, #4da6ff 50%, #8b5a2b 50%, #8b5a2b 100%); }
+        #att-lines { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; transform: translate(-50%, -50%); }
+        .att-line { position: absolute; background: white; height: 2px; left: 50%; transform: translateX(-50%); }
+        .att-line.l1 { width: 60%; top: 50%; } .att-line.l2 { width: 40%; top: 40%; } .att-line.l3 { width: 40%; top: 60%; }
+        #att-airplane { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; transform: translate(-50%, -50%); z-index: 5; }
+        .wing { position: absolute; top: 50%; width: 20px; height: 4px; background: yellow; transform: translateY(-50%); }
+        .wing.left { left: 10%; } .wing.right { right: 10%; }
+        .dot { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: yellow; border-radius: 50%; transform: translate(-50%, -50%); }
+
+        #hud-radar { text-align: center; }
+        #radar-circle { width: 140px; height: 140px; border-radius: 50%; border: 2px solid #0f0; background: rgba(0,0,0,0.6); position: relative; margin-bottom: 5px; overflow: hidden; }
+        #radar-plane { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid #ffff00; z-index: 10; }
+        #radar-dot { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; background: #ff0000; border-radius: 50%; transform: translate(-50%, -50%); transition: transform 0.1s; display: none; box-shadow: 0 0 5px #ff0000; }
+        #radar-sweep { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: conic-gradient(rgba(0,255,0,0) 0deg, rgba(0,255,0,0) 300deg, rgba(0,255,0,0.4) 360deg); animation: radar-sweep 4s infinite linear; border-radius: 50%; }
+        @keyframes radar-sweep { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #radar-dist { color: #0f0; font-size: 14px; font-weight: bold; text-shadow: 0 0 2px #000; }
+
+        .touch-ui { position: absolute; z-index: 20; user-select: none; -webkit-user-select: none; display: none; }
+
+        #joystick-zone { bottom: 0; left: 0; width: 40%; height: 50%; }
+        #joystick-base { position: absolute; bottom: 40px; left: 40px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); }
+        #joystick-knob { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; border-radius: 50%; background: rgba(255, 255, 255, 0.4); border: 2px solid rgba(255, 255, 255, 0.6); }
+
+        #throttle-zone { bottom: 0; right: 0; width: 30%; height: 60%; }
+        #throttle-base { position: absolute; bottom: 40px; right: 40px; width: 40px; height: 180px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 20px; display: flex; justify-content: center; }
+        #throttle-knob { position: absolute; bottom: 0; width: 40px; height: 40px; background: rgba(0, 255, 0, 0.5); border: 2px solid rgba(255, 255, 255, 0.6); border-radius: 20px; }
+        #throttle-label { position: absolute; top: -25px; width: 100%; text-align: center; color: white; font-size: 12px; }
+
+        #yaw-controls { position: absolute; bottom: 40px; right: 120px; display: flex; flex-direction: column; gap: 10px; }
+        .yaw-btn { width: 50px; height: 50px; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 10px; color: white; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+        #controls-info { position: absolute; bottom: 20px; left: 20px; color: rgba(255,255,255,0.5); font-size: 12px; z-index: 10; pointer-events: none; display: none; }
+        
+        /* Telas Win95 */
+        .win95-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; gap: 15px; }
+        .win95-window { background: #c0c0c0; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; box-shadow: 2px 2px 0 0 #000000; width: 420px; }
+        .win95-titlebar { background: #000080; color: white; padding: 3px 5px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+        .win95-body { padding: 15px; display: flex; flex-direction: column; gap: 15px; color: #000; font-size: 13px; }
+        .win95-btn { background: #c0c0c0; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; padding: 8px 15px; font-family: 'MS Sans Serif', sans-serif; font-weight: bold; cursor: pointer; box-shadow: 1px 1px 0 0 #000; flex-grow: 1; text-align: center; }
+        .win95-btn:active { border-color: #808080 #ffffff #ffffff #808080; box-shadow: none; transform: translate(1px, 1px); }
+        .win95-btn-row { display: flex; gap: 10px; justify-content: space-between; margin-top: 5px; }
+        #progress-container-win95 { width: 100%; height: 20px; background: #fff; border: 1px inset #808080; display: none; margin-top: 10px; }
+        #progress-bar-fill-win95 { height: 100%; width: 0%; background: #000080; transition: width 0.2s; }
+        #progress-text-win95 { text-align: center; margin-top: 5px; font-size: 12px; }
+        
+        .hangar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .hangar-col { border: 1px solid #808080; padding: 10px; background: #fff; }
+        .hangar-col h4 { margin: 0 0 10px 0; border-bottom: 1px solid #000; padding-bottom: 5px; }
+        .aircraft-item { padding: 8px; border: 1px solid #000; margin-bottom: 8px; cursor: pointer; background: #c0c0c0; display: flex; justify-content: space-between; }
+        .aircraft-item.locked { color: #808080; background: #a0a0a0; cursor: pointer; }
+        .aircraft-item.selected { background: #000080; color: #fff; }
+        select { width: 100%; padding: 5px; font-family: 'MS Sans Serif', sans-serif; }
+
+        /* Backgrounds das Telas puxados do GitHub */
+        #title-screen { 
+            background: url('https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/fos_titlescreen.jpg') no-repeat center center fixed; 
+            background-size: cover; 
+            flex-direction: column; 
+        }
+        #title-screen h1 { color: white; font-size: 48px; text-align: center; margin: 0; text-shadow: 4px 4px 8px #000; letter-spacing: 2px; }
+        #title-screen h2 { color: #c0c0c0; font-size: 20px; text-align: center; margin: 0 0 20px 0; font-weight: normal; text-shadow: 2px 2px 4px #000; }
+
+        #hangar-menu { 
+            background: url('https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/fos_hangar.png') no-repeat center center fixed; 
+            background-size: cover; 
+        }
+        #loading-screen { 
+            background: url('https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/fos_maploading.png') no-repeat center center fixed; 
+            background-size: cover; 
+        }
+
+        #left-panel { position: absolute; top: 0; left: 0; width: 300px; height: 100%; background: rgba(20, 20, 20, 0.95); color: white; padding: 15px; overflow-y: auto; pointer-events: auto; border-right: 1px solid #444; display: flex; flex-direction: column; gap: 20px; z-index: 110; transform: translateX(-100%); transition: transform 0.3s ease-in-out; font-family: monospace; }
+        #left-panel.open { transform: translateX(0); }
+        #left-panel h2 { margin: 0 0 10px 0; font-size: 16px; text-align: center; color: #4caf50; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .editor-section { background: #222; padding: 10px; border-radius: 6px; border: 1px solid #333; }
+        .editor-section h3 { margin: 0 0 10px 0; font-size: 13px; color: #aaa; }
+        .editor-input-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 10px; }
+        .editor-input-row label { font-size: 11px; width: 45%; }
+        .editor-input-row input { width: 100%; padding: 4px; background: #111; color: white; border: 1px solid #444; border-radius: 3px; font-family: monospace; text-align: center; font-size: 11px; }
+        .btn-group { display: flex; gap: 5px; align-items: center; width: 55%; }
+        .btn-group input { flex-grow: 1; }
+        .btn-group button { width: 20px; height: 20px; background: #333; color: white; border: 1px solid #555; border-radius: 3px; cursor: pointer; font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .btn-group button:active { background: #555; }
+
+        .ui-btn { position: absolute; width: 40px; height: 40px; background: rgba(0,0,0,0.7); color: white; border: 1px solid #555; border-radius: 5px; font-size: 18px; cursor: pointer; z-index: 120; display: flex; align-items: center; justify-content: center; }
+        .ui-btn:active { background: rgba(0,0,0,0.9); }
+        #toggle-config-btn { top: 20px; left: 20px; display: none; }
+        #toggle-hangar-btn { top: 20px; left: 70px; display: none; }
+        #toggle-search-btn { top: 70px; left: 20px; display: none; }
+        #mission-btn { top: 120px; left: 20px; background: #224477; display: none; }
+        #autopilot-btn { top: 170px; left: 20px; background: #444; display: none; }
+        #fullscreen-btn { top: 20px; right: 20px; }
+        #toggle-photo-btn { top: 20px; right: 70px; display: none; }
+        #toggle-hud-btn { top: 20px; right: 120px; display: none; }
+        #lang-select { position: absolute; top: 20px; right: 170px; z-index: 120; background: rgba(0,0,0,0.7); color: white; border: 1px solid #555; padding: 8px; border-radius: 5px; font-family: monospace; display: none; }
+
+        #return-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 120px; height: 50px; background: rgba(150, 0, 0, 0.85); color: white; border: 1px solid #ff0000; border-radius: 8px; font-family: monospace; font-weight: bold; cursor: pointer; z-index: 45; display: none; align-items: center; justify-content: center; gap: 5px; }
+        #return-btn:active { background: rgba(200, 0, 0, 0.95); }
+
+        #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #333; color: #fff; text-align: center; border-radius: 5px; padding: 16px; position: fixed; z-index: 200; left: 50%; bottom: 180px; font-size: 14px; border: 1px solid #fff; }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from {bottom: 130px; opacity: 0;} to {bottom: 180px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 180px; opacity: 1;} to {bottom: 130px; opacity: 0;} }
+        
+        #shutter-btn { position: absolute; bottom: 40px; right: 40px; width: 70px; height: 70px; background: rgba(255,255,255,0.8); border: 4px solid #fff; border-radius: 50%; cursor: pointer; z-index: 130; display: none; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        #shutter-btn:active { background: #ff0000; transform: scale(0.95); }
+
+        .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; color: white; padding: 20px; border-radius: 8px; border: 1px solid #555; z-index: 150; display: none; flex-direction: column; gap: 15px; width: 300px; font-family: monospace; }
+        .modal h3 { margin: 0; color: #4caf50; text-align: center; }
+        .modal p { margin: 0; font-size: 13px; line-height: 1.5; white-space: pre-line; }
+        .modal input { width: 100%; padding: 8px; box-sizing: border-box; background: #111; color: white; border: 1px solid #444; border-radius: 3px; font-family: monospace; }
+        .modal-btns { display: flex; gap: 10px; justify-content: center; }
+        .modal-btns button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-family: monospace; font-weight: bold; width: 100%; }
+        .btn-accept { background: #225522; color: white; }
+        .btn-route { background: #224477; color: white; }
+        .btn-reject { background: #552222; color: white; }
+        .btn-close { background: #333; color: white; width: 100%; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-family: monospace; font-weight: bold; }
+
+    </style>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+</head>
+<body>
+    <!-- Tela de Título Fullscreen -->
+    <div id="title-screen" class="win95-overlay" style="display: none;">
+        <h1>Flight Open Simulator</h1>
+        <h2>Clique para Entrar</h2>
+        <div style="margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 15px;">
+            <select id="lang-select-title" style="background: #c0c0c0; color: black; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; padding: 8px; font-family: 'MS Sans Serif', sans-serif; font-weight: bold;">
+                <option value="pt">Português</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+            </select>
+            <button id="enter-hangar-btn" class="win95-btn" style="font-size: 20px; padding: 15px 40px; flex-grow: 0;">Entrar no Hangar</button>
+        </div>
+    </div>
+
+    <!-- Hangar 2D -->
+    <div id="hangar-menu" class="win95-overlay" style="display: none;">
+        <div class="win95-window">
+            <div class="win95-titlebar">
+                <span>Flight Open Simulator - Hangar</span>
+                <span>_</span>
+            </div>
+            <div class="win95-body">
+                <div class="hangar-grid">
+                    <div class="hangar-col">
+                        <h4>Aeronaves</h4>
+                        <div id="aircraft-list"></div>
+                    </div>
+                    <div class="hangar-col">
+                        <h4>Local de Partida</h4>
+                        <select id="city-select">
+                            <option value="40.7580,-73.9855">Nova York, EUA</option>
+                            <option value="48.8566,2.3522">Paris, França</option>
+                            <option value="51.5074,-0.1278">Londres, Reino Unido</option>
+                            <option value="-22.9068,-43.1729">Rio de Janeiro, Brasil</option>
+                            <option value="-23.5505,-46.6333">São Paulo, Brasil</option>
+                            <option value="35.6762,139.6503">Tóquio, Japão</option>
+                        </select>
+                        <div style="margin-top: 15px; border-top: 1px solid #808080; padding-top: 10px;">
+                            Saldo: <span id="hangar-money" style="font-weight: bold;">$0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="win95-btn-row" style="width: 420px;">
+            <button class="win95-btn" id="back-title-btn">Voltar</button>
+            <button class="win95-btn" id="start-btn" style="flex-grow: 2;">Voar</button>
+        </div>
+    </div>
+
+    <!-- Tela de Loading -->
+    <div id="loading-screen" class="win95-overlay" style="display: none;">
+        <div class="win95-window" style="width: 320px;">
+            <div class="win95-titlebar">
+                <span>Carregando Mundo</span>
+                <span>_</span>
+            </div>
+            <div class="win95-body">
+                <div id="progress-container-win95">
+                    <div id="progress-bar-fill-win95"></div>
+                </div>
+                <div id="progress-text-win95" style="text-align: center; font-size: 12px;">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <select id="lang-select">
+        <option value="pt">Português</option>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+    </select>
+
+    <!-- Áudio do Menu (Música Aleatória) -->
+    <audio id="menu-music" preload="auto"></audio>
+
+    <div id="left-panel">
+        <h2>Configurações</h2>
+        <div class="editor-section">
+            <h3>Config. do Mundo</h3>
+            <div class="editor-input-row"><label>Latitude:</label><input type="number" id="input-lat" value="40.7580" step="0.0001"></div>
+            <div class="editor-input-row"><label>Longitude:</label><input type="number" id="input-lon" value="-73.9855" step="0.0001"></div>
+            <div class="editor-input-row"><label>Zoom Satélite:</label><input type="number" id="input-zoom" value="13" min="11" max="18"></div>
+            <div class="editor-input-row"><label>Raio Inicial:</label><input type="number" id="input-initialRadius" value="3" min="0"></div>
+            <div class="editor-input-row"><label>Buffer (m):</label><input type="number" id="input-streamRadius" value="1000" step="100"></div>
+            <div class="editor-input-row"><label>Dist. Fog:</label><input type="number" id="input-fogDistance" value="2000" step="500"></div>
+            <div class="editor-input-row"><label>Cone Frente (%):</label><input type="number" id="input-coneFront" value="2.0" step="0.1"></div>
+            <div class="editor-input-row"><label>Cone Lados (%):</label><input type="number" id="input-coneSide" value="2.0" step="0.1"></div>
+            <div class="editor-input-row"><label>Cone Tras (%):</label><input type="number" id="input-coneBack" value="2.0" step="0.05"></div>
+        </div>
+        <div class="editor-section">
+            <h3>Ajuste do Veículo</h3>
+            <div class="editor-input-row"><label>Escala</label><div class="btn-group"><button class="btn-minus" data-prop="scale" data-step="0.5">-</button><input type="number" id="input-scale" value="30" step="0.5"><button class="btn-plus" data-prop="scale" data-step="0.5">+</button></div></div>
+            <div class="editor-input-row"><label>Offset X</label><div class="btn-group"><button class="btn-minus" data-prop="offsetX" data-step="1">-</button><input type="number" id="input-offsetX" value="0" step="1"><button class="btn-plus" data-prop="offsetX" data-step="1">+</button></div></div>
+            <div class="editor-input-row"><label>Offset Y</label><div class="btn-group"><button class="btn-minus" data-prop="offsetY" data-step="1">-</button><input type="number" id="input-offsetY" value="-140" step="1"><button class="btn-plus" data-prop="offsetY" data-step="1">+</button></div></div>
+            <div class="editor-input-row"><label>Offset Z</label><div class="btn-group"><button class="btn-minus" data-prop="offsetZ" data-step="1">-</button><input type="number" id="input-offsetZ" value="-80" step="1"><button class="btn-plus" data-prop="offsetZ" data-step="1">+</button></div></div>
+            <div class="editor-input-row"><label>Rot X</label><div class="btn-group"><button class="btn-minus" data-prop="rotX" data-step="1">-</button><input type="number" id="input-rotX" value="0" step="1"><button class="btn-plus" data-prop="rotX" data-step="1">+</button></div></div>
+            <div class="editor-input-row"><label>Rot Y</label><div class="btn-group"><button class="btn-minus" data-prop="rotY" data-step="1">-</button><input type="number" id="input-rotY" value="0" step="1"><button class="btn-plus" data-prop="rotY" data-step="1">+</button></div></div>
+            <div class="editor-input-row"><label>Rot Z</label><div class="btn-group"><button class="btn-minus" data-prop="rotZ" data-step="1">-</button><input type="number" id="input-rotZ" value="0" step="1"><button class="btn-plus" data-prop="rotZ" data-step="1">+</button></div></div>
+            <div class="editor-input-row"><label>Zoom Cam</label><div class="btn-group"><button class="btn-minus" data-prop="camZoom" data-step="0.1">-</button><input type="number" id="input-camZoom" value="0.5" step="0.1"><button class="btn-plus" data-prop="camZoom" data-step="0.1">+</button></div></div>
+        </div>
+        <div class="editor-section">
+            <h3>Ajuste do HUD</h3>
+            <div class="editor-input-row"><label>Hud Escala</label><div class="btn-group"><button class="btn-minus" data-prop="hudScale" data-step="0.1">-</button><input type="number" id="input-hudScale" value="0.5" step="0.1"><button class="btn-plus" data-prop="hudScale" data-step="0.1">+</button></div></div>
+            <div class="editor-input-row"><label>Hud Pos X</label><div class="btn-group"><button class="btn-minus" data-prop="hudX" data-step="10">-</button><input type="number" id="input-hudX" value="0" step="10"><button class="btn-plus" data-prop="hudX" data-step="10">+</button></div></div>
+            <div class="editor-input-row"><label>Hud Pos Y</label><div class="btn-group"><button class="btn-minus" data-prop="hudY" data-step="10">-</button><input type="number" id="input-hudY" value="-40" step="10"><button class="btn-plus" data-prop="hudY" data-step="10">+</button></div></div>
+        </div>
+    </div>
+
+    <div id="hud">
+        <div id="hud-top">
+            <div class="hud-box"><span id="spd-val">0</span><label>SPD</label></div>
+            <div class="hud-box"><span id="hdg-val">N 0°</span><label>HDG</label></div>
+            <div class="hud-box"><span id="alt-val">0</span><label>ALT</label></div>
+            <div class="hud-box" style="color: #ffd700;"><span id="money-val">$0</span><label>FUNDOS</label></div>
+        </div>
+        
+        <div id="hud-bottom">
+            <div id="hud-compass">
+                <div id="compass-circle">
+                    <div id="compass-rot">
+                        <div class="c-mark" style="top: 5px; left: 50%; transform: translateX(-50%);">N</div>
+                        <div class="c-mark" style="top: 50%; right: 5px; transform: translateY(-50%);">E</div>
+                        <div class="c-mark" style="bottom: 5px; left: 50%; transform: translateX(-50%);">S</div>
+                        <div class="c-mark" style="top: 50%; left: 5px; transform: translateY(-50%);">W</div>
+                    </div>
+                    <div id="compass-line"></div>
+                    <div id="compass-center"></div>
+                    <div id="compass-plane-mark"></div>
+                </div>
+                <div id="compass-hdg">N 0°</div>
+            </div>
+
+            <div id="hud-attitude">
+                <div id="att-rotate"><div id="att-pitch"><div id="att-ball"></div><div id="att-lines"><div class="att-line l1"></div><div class="att-line l2"></div><div class="att-line l3"></div></div></div></div>
+                <div id="att-airplane"><div class="wing left"></div><div class="wing right"></div><div class="dot"></div></div>
+            </div>
+            
+            <div id="hud-radar">
+                <div id="radar-circle">
+                    <div id="radar-sweep"></div>
+                    <div id="radar-plane"></div>
+                    <div id="radar-dot"></div>
+                </div>
+                <div id="radar-dist">-- km</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="joystick-zone" class="touch-ui"><div id="joystick-base"><div id="joystick-knob"></div></div></div>
+    <div id="throttle-zone" class="touch-ui">
+        <div id="throttle-base"><div id="throttle-label">THR</div><div id="throttle-knob"></div></div>
+        <div id="yaw-controls"><div class="yaw-btn" id="yaw-left">◀</div><div class="yaw-btn" id="yaw-right">▶</div></div>
+    </div>
+    <div id="controls-info">PC: W/S (Pitch) | A/D (Roll) | Q/E (Yaw) | Shift/Ctrl (Throttle)</div>
+
+    <button id="toggle-config-btn" class="ui-btn">⚙️</button>
+    <button id="toggle-hangar-btn" class="ui-btn">🏠</button>
+    <button id="toggle-search-btn" class="ui-btn">🔍</button>
+    <button id="mission-btn" class="ui-btn">📋</button>
+    <button id="autopilot-btn" class="ui-btn">🤖</button>
+    <button id="toggle-hud-btn" class="ui-btn">👁️</button>
+    <button id="toggle-photo-btn" class="ui-btn">📷</button>
+    <button id="fullscreen-btn" class="ui-btn">⛶</button>
+    <button id="return-btn">↩️ RETORNAR</button>
+    <button id="shutter-btn">📸</button>
+    <div id="toast"></div>
+
+    <div id="search-modal" class="modal">
+        <h3>Busca de Cidade</h3>
+        <input type="text" id="city-search-input" placeholder="Buscar cidade...">
+        <div class="modal-btns">
+            <button id="search-go-btn" class="btn-accept">Ir</button>
+            <button id="search-route-btn" class="btn-route">Rota</button>
+        </div>
+        <button id="search-close-btn" class="btn-close">Fechar</button>
+    </div>
+
+    <div id="mission-modal" class="modal">
+        <h3 id="mission-title">Missão Disponível</h3>
+        <p id="mission-desc">Transporte VIP aguardando em...</p>
+        <div class="modal-btns">
+            <button id="mission-accept" class="btn-accept">Aceitar</button>
+            <button id="mission-reject" class="btn-reject">Recusar</button>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal">
+        <h3 id="confirm-title">Confirmar</h3>
+        <p id="confirm-desc">Deseja confirmar?</p>
+        <div class="modal-btns">
+            <button id="confirm-yes" class="btn-accept">Sim</button>
+            <button id="confirm-no" class="btn-reject">Não</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ==========================================================
+        // 0. IDIOMA E TRADUÇÃO
+        // ==========================================================
+        const translations = {
+            pt: { title: "Flight Open Simulator", start: "INICIAR VOO", fly: "VOAR", settings: "Configurações", world_settings: "Config. do Mundo", vehicle_settings: "Ajuste do Veículo", hud_settings: "Ajuste do HUD", lat: "Latitude:", lon: "Longitude:", zoom: "Zoom:", init_radius: "Raio Inicial:", buffer: "Buffer (m):", fog: "Dist. Fog:", cone_front: "Cone Frente (%):", cone_side: "Cone Lados (%):", cone_back: "Cone Tras (%):", scale: "Escala", offset_x: "Offset X", offset_y: "Offset Y", offset_z: "Offset Z", rot_x: "Rot X", rot_y: "Rot Y", rot_z: "Rot Z", zoom_cam: "Zoom Cam", hud_scale: "Hud Escala", hud_pos_x: "Hud Pos X", hud_pos_y: "Hud Pos Y", funds: "FUNDOS", spd: "SPD", hdg: "HDG", alt: "ALT", thr: "THR", hangar_title: "HANGAR", aircraft: "Aeronave:", cessna: "Cessna 182 Skylane", max_spd: "Vel. Máx:", max_alt: "Alt. Máx:", drag_rotate: "Arraste o dedo/mouse para girar a câmera", search_title: "Busca de Cidade", search_placeholder: "Buscar cidade...", go: "Ir", route: "Rota", close: "Fechar", controls_info: "PC: W/S (Pitch) | A/D (Roll) | Q/E (Yaw) | Shift/Ctrl (Throttle)", return_btn: "↩️ RETORNAR", mission_title: "Missão Disponível", mission_accept: "Aceitar", mission_reject: "Recusar", cancel_mission_title: "Cancelar Missão?", cancel_mission_desc: "Deseja cancelar a missão atual?", yes: "Sim", no: "Não", mission_type_vip: "Tipo: Transporte VIP", mission_type_cargo: "Tipo: Entrega de Carga", mission_type_photo: "Tipo: Reconhecimento Aéreo", mission_dest: "Destino: {city}", mission_dist: "Distância: ~{dist} km", mission_reward: "Recompensa: {currency} {reward}", mission_alt_vip: "Altitude Máx p/ Pouso: 500m", mission_alt_cargo: "Altitude Máx p/ Descarga: 300m", mission_alt_photo: "Altitude Máx p/ Foto: 1500m", mission_accepted: "Missão aceita. Rota traçada.", destination_reached: "Destino alcançado! Recompensa: {currency} {reward}", city_not_found: "Cidade não encontrada.", error_search: "Erro ao buscar cidade.", loading: "Carregando Mundo...", photo_saved: "Foto salva com sucesso!", mission_cancelled: "Missão cancelada.", ap_on: "Piloto Automático: LIGADO", ap_off: "Piloto Automático: DESLIGADO", ap_err: "Ative uma rota primeiro!" },
+            en: { title: "Flight Open Simulator", start: "START FLIGHT", fly: "FLY", settings: "Settings", world_settings: "World Settings", vehicle_settings: "Vehicle Adjust", hud_settings: "HUD Adjust", lat: "Latitude:", lon: "Longitude:", zoom: "Zoom:", init_radius: "Initial Radius:", buffer: "Buffer (m):", fog: "Fog Dist:", cone_front: "Cone Front (%):", cone_side: "Cone Sides (%):", cone_back: "Cone Back (%):", scale: "Scale", offset_x: "Offset X", offset_y: "Offset Y", offset_z: "Offset Z", rot_x: "Rot X", rot_y: "Rot Y", rot_z: "Rot Z", zoom_cam: "Zoom Cam", hud_scale: "Hud Scale", hud_pos_x: "Hud Pos X", hud_pos_y: "Hud Pos Y", funds: "FUNDS", spd: "SPD", hdg: "HDG", alt: "ALT", thr: "THR", hangar_title: "HANGAR", aircraft: "Aircraft:", cessna: "Cessna 182 Skylane", max_spd: "Max Spd:", max_alt: "Max Alt:", drag_rotate: "Drag finger/mouse to rotate camera", search_title: "City Search", search_placeholder: "Search city...", go: "Go", route: "Route", close: "Close", controls_info: "PC: W/S (Pitch) | A/D (Roll) | Q/E (Yaw) | Shift/Ctrl (Throttle)", return_btn: "↩️ RETURN", mission_title: "Mission Available", mission_accept: "Accept", mission_reject: "Reject", cancel_mission_title: "Cancel Mission?", cancel_mission_desc: "Do you want to cancel the current mission?", yes: "Yes", no: "No", mission_type_vip: "Type: VIP Transport", mission_type_cargo: "Type: Cargo Delivery", mission_type_photo: "Type: Aerial Recon", mission_dest: "Destination: {city}", mission_dist: "Distance: ~{dist} km", mission_reward: "Reward: {currency} {reward}", mission_alt_vip: "Max Alt to Land: 500m", mission_alt_cargo: "Max Alt to Unload: 300m", mission_alt_photo: "Max Alt to Photo: 1500m", mission_accepted: "Mission accepted. Route plotted.", destination_reached: "Destination reached! Reward: {currency} {reward}", city_not_found: "City not found.", error_search: "Error searching city.", loading: "Loading World...", photo_saved: "Photo saved successfully!", mission_cancelled: "Mission cancelled.", ap_on: "Autopilot: ON", ap_off: "Autopilot: OFF", ap_err: "Plot a route first!" },
+            es: { title: "Flight Open Simulator", start: "INICIAR VUELO", fly: "VOLAR", settings: "Ajustes", world_settings: "Config. del Mundo", vehicle_settings: "Ajuste del Vehículo", hud_settings: "Ajuste del HUD", lat: "Latitud:", lon: "Longitud:", zoom: "Zoom:", init_radius: "Radio Inicial:", buffer: "Buffer (m):", fog: "Dist. Niebla:", cone_front: "Cono Frente (%):", cone_side: "Cono Lados (%):", cone_back: "Cono Atrás (%):", scale: "Escala", offset_x: "Offset X", offset_y: "Offset Y", offset_z: "Offset Z", rot_x: "Rot X", rot_y: "Rot Y", rot_z: "Rot Z", zoom_cam: "Zoom Cam", hud_scale: "Hud Escala", hud_pos_x: "Hud Pos X", hud_pos_y: "Hud Pos Y", funds: "FONDOS", spd: "SPD", hdg: "HDG", alt: "ALT", thr: "THR", hangar_title: "HANGAR", aircraft: "Aeronave:", cessna: "Cessna 182 Skylane", max_spd: "Vel. Máx:", max_alt: "Alt. Máx:", drag_rotate: "Arrastra el dedo/ratón para girar la cámara", search_title: "Búsqueda de Ciudad", search_placeholder: "Buscar ciudad...", go: "Ir", route: "Ruta", close: "Cerrar", controls_info: "PC: W/S (Pitch) | A/D (Roll) | Q/E (Yaw) | Shift/Ctrl (Throttle)", return_btn: "↩️ VOLVER", mission_title: "Misión Disponible", mission_accept: "Aceptar", mission_reject: "Rechazar", cancel_mission_title: "¿Cancelar Misión?", cancel_mission_desc: "¿Desea cancelar la misión actual?", yes: "Sí", no: "No", mission_type_vip: "Tipo: Transporte VIP", mission_type_cargo: "Tipo: Entrega de Carga", mission_type_photo: "Tipo: Reconocimiento Aéreo", mission_dest: "Destino: {city}", mission_dist: "Distancia: ~{dist} km", mission_reward: "Recompensa: {currency} {reward}", mission_alt_vip: "Altitud Máx p/ Aterrizar: 500m", mission_alt_cargo: "Altitud Máx p/ Descarga: 300m", mission_alt_photo: "Altitud Máx p/ Foto: 1500m", mission_accepted: "Misión aceptada. Ruta trazada.", destination_reached: "Destino alcanzado! Recompensa: {currency} {reward}", city_not_found: "Ciudad no encontrada.", error_search: "Error al buscar ciudad.", loading: "Cargando Mundo...", photo_saved: "¡Foto guardada con éxito!", mission_cancelled: "Misión cancelada.", ap_on: "Piloto Automático: ENCENDIDO", ap_off: "Piloto Automático: APAGADO", ap_err: "¡Trace una ruta primero!" }
+        };
+
+        let currentLang = 'pt';
+        let currencySymbol = 'R$';
+
+        function applyLanguage(lang) {
+            currentLang = lang;
+            if (lang === 'pt') currencySymbol = 'R$';
+            else if (lang === 'en') currencySymbol = '$';
+            else if (lang === 'es') currencySymbol = '€';
+            document.querySelectorAll('[data-i18n]').forEach(el => { const key = el.getAttribute('data-i18n'); if (translations[lang][key]) el.innerText = translations[lang][key]; });
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => { const key = el.getAttribute('data-i18n-ph'); if (translations[lang][key]) el.placeholder = translations[lang][key]; });
+            document.getElementById('lang-select').value = lang;
+            document.getElementById('lang-select-title').value = lang;
+            updateMoneyUI();
+            if (currentMission) updateMissionModalText();
+        }
+
+        document.getElementById('lang-select').addEventListener('change', (e) => applyLanguage(e.target.value));
+        document.getElementById('lang-select-title').addEventListener('change', (e) => applyLanguage(e.target.value));
+
+        // ==========================================================
+        // 0.1 INDEXEDDB SETUP 
+        // ==========================================================
+        const DB_NAME = 'AeroWebDB';
+        const DB_VERSION = 3; 
+        let db;
+
+        function initDB() {
+            return new Promise((resolve) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains('models')) database.createObjectStore('models');
+                    if (!database.objectStoreNames.contains('configs')) database.createObjectStore('configs');
+                    if (!database.objectStoreNames.contains('game_state')) database.createObjectStore('game_state');
+                };
+                request.onsuccess = (e) => { db = e.target.result; resolve(); };
+                request.onerror = (e) => { console.error("Erro IDB", e); resolve(); };
+            });
+        }
+
+        function idbGet(store, key) { return new Promise((resolve) => { try { const tx = db.transaction(store, 'readonly'); const req = tx.objectStore(store).get(key); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); } catch(e) { resolve(null); } }); }
+        function idbSet(store, key, value) { return new Promise((resolve) => { try { const tx = db.transaction(store, 'readwrite'); tx.objectStore(store).put(value, key); tx.oncomplete = () => resolve(true); tx.onerror = () => resolve(false); } catch(e) { resolve(false); } }); }
+
+        // ==========================================================
+        // GAME STATE (Dinheiro e Aviões)
+        // ==========================================================
+        const aircraftData = [
+            { id: 'cessna', name: 'Cessna 182 Skylane', price: 0 },
+            { id: 'boeing', name: 'Boeing 737', price: 10000 }
+        ];
+        let currentAircraft = 'cessna';
+        let gameState = { money: 0, unlocked: ['cessna'] };
+
+        async function loadGameState() {
+            const state = await idbGet('game_state', 'profile');
+            if (state) gameState = JSON.parse(state);
+            updateMoneyUI();
+            renderHangarAircraft();
+        }
+
+        function saveGameState() {
+            idbSet('game_state', 'profile', JSON.stringify(gameState));
+        }
+
+        function updateMoneyUI() {
+            const moneyStr = `${currencySymbol} ${gameState.money}`;
+            document.getElementById('money-val').innerText = moneyStr;
+            document.getElementById('hangar-money').innerText = moneyStr;
+        }
+
+        function renderHangarAircraft() {
+            const list = document.getElementById('aircraft-list');
+            list.innerHTML = '';
+            aircraftData.forEach(ac => {
+                const isUnlocked = gameState.unlocked.includes(ac.id);
+                const isSelected = currentAircraft === ac.id;
+                const div = document.createElement('div');
+                div.className = 'aircraft-item' + (isUnlocked ? '' : ' locked') + (isSelected ? ' selected' : '');
+                div.innerHTML = `${ac.name} ${isUnlocked ? '' : `($${ac.price}) 🔒`}`;
+                div.onclick = () => handleAircraftClick(ac.id);
+                list.appendChild(div);
+            });
+        }
+
+        let confirmCallback = null;
+        function showConfirm(title, desc, callback) {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-desc').innerText = desc;
+            document.getElementById('confirm-modal').style.display = 'flex';
+            confirmCallback = callback;
+        }
+        document.getElementById('confirm-yes').addEventListener('click', () => { document.getElementById('confirm-modal').style.display = 'none'; if (confirmCallback) confirmCallback(true); confirmCallback = null; });
+        document.getElementById('confirm-no').addEventListener('click', () => { document.getElementById('confirm-modal').style.display = 'none'; if (confirmCallback) confirmCallback(false); confirmCallback = null; });
+
+        function handleAircraftClick(id) {
+            const ac = aircraftData.find(a => a.id === id);
+            if (gameState.unlocked.includes(id)) {
+                currentAircraft = id;
+                renderHangarAircraft();
+            } else {
+                if (gameState.money >= ac.price) {
+                    showConfirm("Comprar Aeronave", `Deseja comprar ${ac.name} por $${ac.price}?`, (yes) => {
+                        if (yes) {
+                            gameState.money -= ac.price;
+                            gameState.unlocked.push(id);
+                            currentAircraft = id;
+                            saveGameState();
+                            updateMoneyUI();
+                            renderHangarAircraft();
+                            showToast("Compra realizada com sucesso!");
+                        }
+                    });
+                } else {
+                    showToast("Fundos insuficientes!");
+                }
+            }
+        }
+
+        // ==========================================================
+        // ÁUDIO (Música Aleatória do Menu - puxada do GitHub)
+        // ==========================================================
+        const menuMusic = document.getElementById('menu-music');
+        const baseUrl = 'https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/';
+        const menuTracks = [`${baseUrl}fos_menu1.mp3`, `${baseUrl}fos_menu2.mp3`, `${baseUrl}fos_menu3.mp3`, `${baseUrl}fos_menu4.mp3`, `${baseUrl}fos_menu5.mp3`, `${baseUrl}fos_menu6.mp3`, `${baseUrl}fos_menu7.mp3`, `${baseUrl}fos_menu8.mp3`];
+        let currentTrackIndex = -1;
+
+        function playRandomMenuMusic() {
+            let nextIndex;
+            do {
+                nextIndex = Math.floor(Math.random() * menuTracks.length);
+            } while (nextIndex === currentTrackIndex && menuTracks.length > 1);
+            
+            currentTrackIndex = nextIndex;
+            menuMusic.src = menuTracks[currentTrackIndex];
+            menuMusic.play().catch(e => console.log("Música bloqueada até interação do usuário."));
+        }
+
+        menuMusic.addEventListener('ended', playRandomMenuMusic);
+
+        // ==========================================================
+        // 0.2 PRELOAD DE IMAGENS DA UI
+        // ==========================================================
+        const uiImagesToPreload = [
+            'https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/fos_titlescreen.jpg',
+            'https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/fos_hangar.png',
+            'https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/fos_maploading.png'
+        ];
+
+        function preloadUIImages(urls) {
+            return Promise.all(urls.map(url => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.src = url;
+                    img.onload = () => resolve({ url, status: 'ok' });
+                    img.onerror = () => resolve({ url, status: 'error' }); // Resolve mesmo se falhar para não travar o jogo
+                });
+            }));
+        }
+
+        // ==========================================================
+        // 1. CENA, CÂMERA E RENDERIZADOR
+        // ==========================================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 1000, 2000);
+
+        // FOV REDUZIDO PARA 50 (Avião fica maior na tela e renderiza menos mundo)
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 5000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(100, 200, 100);
+        scene.add(directionalLight);
+
+        const oceanGeo = new THREE.PlaneGeometry(10000, 10000);
+        const oceanMat = new THREE.MeshLambertMaterial({ color: 0x1a4d6e, side: THREE.DoubleSide });
+        const ocean = new THREE.Mesh(oceanGeo, oceanMat);
+        ocean.rotation.x = -Math.PI / 2; ocean.position.y = -10; scene.add(ocean);
+
+        const orbitControls = new OrbitControls(camera, renderer.domElement);
+        orbitControls.enableDamping = true; orbitControls.dampingFactor = 0.1; orbitControls.enabled = true; 
+
+        // ==========================================================
+        // 2. SISTEMA DE TILES E CACHE LRU (RAM)
+        // ==========================================================
+        let ORIGIN_LAT = 40.7580; let ORIGIN_LON = -73.9855; const EARTH_RADIUS = 6378137;
+        let ZOOM = 13; let CHUNK_SIZE = 500; let STREAM_RADIUS = 6; // ZOOM PADRÃO ATUALIZADO PARA 13
+        
+        const loadedChunks = {}; const textureLoader = new THREE.TextureLoader(); textureLoader.crossOrigin = "anonymous";
+        const textureCache = new Map(); const MAX_CACHE_SIZE = 128; 
+
+        function getTexture(key) { if (textureCache.has(key)) { const tex = textureCache.get(key); textureCache.delete(key); textureCache.set(key, tex); return tex; } return null; }
+        function addTexture(key, texture) { if (textureCache.size >= MAX_CACHE_SIZE) { const oldestKey = textureCache.keys().next().value; const oldTex = textureCache.get(oldestKey); oldTex.dispose(); textureCache.delete(oldestKey); } textureCache.set(key, texture); }
+
+        function latLonToXZ(lat, lon) { const x = (lon - ORIGIN_LON) * (Math.PI / 180) * EARTH_RADIUS * Math.cos(ORIGIN_LAT * Math.PI / 180); const z = (lat - ORIGIN_LAT) * (Math.PI / 180) * EARTH_RADIUS; return { x, z: -z }; }
+        function xzToLatLon(x, z) { const lat = ORIGIN_LAT - (z / EARTH_RADIUS) * (180 / Math.PI); const lon = ORIGIN_LON + (x / (EARTH_RADIUS * Math.cos(ORIGIN_LAT * Math.PI / 180))) * (180 / Math.PI); return { lat, lon }; }
+        function latLonToTileXY(lat, lon, zoom) { const n = Math.pow(2, zoom); const x = Math.floor((lon + 180) / 360 * n); const latRad = lat * Math.PI / 180; const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1/Math.cos(latRad)) / Math.PI) / 2 * n); return { x, y }; }
+
+        // ==========================================================
+        // 2.1 FILA DE DOWNLOAD OTIMIZADA COM FALLBACK E TURBO
+        // ==========================================================
+        const MAX_CONCURRENT_NORMAL = 10;  
+        const MAX_CONCURRENT_TURBO = 20;   
+        let isInitialLoading = false; 
+        
+        let activeDownloads = 0; const downloadQueue = []; const queuedSet = new Set(); 
+        let totalChunksToLoad = 0; let loadedChunksCount = 0; let loadingStuckTimer = null;
+
+        function requestChunk(chunkX, chunkZ) { const chunkKey = `${chunkX},${chunkZ}`; if (loadedChunks[chunkKey] || queuedSet.has(chunkKey)) return; queuedSet.add(chunkKey); downloadQueue.push(chunkKey); processDownloadQueue(); }
+
+        async function processDownloadQueue() {
+            const currentMax = isInitialLoading ? MAX_CONCURRENT_TURBO : MAX_CONCURRENT_NORMAL;
+            if (activeDownloads >= currentMax || downloadQueue.length === 0) return;
+            
+            activeDownloads++; const chunkKey = downloadQueue.shift(); const [chunkX, chunkZ] = chunkKey.split(',').map(Number);
+            if (loadedChunks[chunkKey]) { activeDownloads--; queuedSet.delete(chunkKey); processDownloadQueue(); return; }
+
+            const cachedTex = getTexture(chunkKey);
+            if (cachedTex) { renderChunk(chunkX, chunkZ, cachedTex, false); queuedSet.delete(chunkKey); updateProgress(); activeDownloads--; processDownloadQueue(); return; }
+
+            const centerLatLon = xzToLatLon((chunkX * CHUNK_SIZE) + (CHUNK_SIZE/2), (chunkZ * CHUNK_SIZE) - (CHUNK_SIZE/2));
+            const tile = latLonToTileXY(centerLatLon.lat, centerLatLon.lon, ZOOM);
+            const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${ZOOM}/${tile.y}/${tile.x}`;
+            const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId); if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const blob = await response.blob();
+                if (blob.size < 5000) throw new Error("No Data Image");
+
+                const objectUrl = URL.createObjectURL(blob);
+                const texture = textureLoader.load(objectUrl, () => URL.revokeObjectURL(objectUrl));
+                addTexture(chunkKey, texture); 
+                renderChunk(chunkX, chunkZ, texture, false); requestBuildings(chunkX, chunkZ, chunkKey);
+                queuedSet.delete(chunkKey); updateProgress(); activeDownloads--; processDownloadQueue();
+            } catch (error) {
+                clearTimeout(timeoutId); console.warn(`Erro/NoData no chunk ${chunkKey}. Acionando Fallback.`, error);
+                requestFallbackZoom(chunkX, chunkZ, tile.x, tile.y);
+                updateProgress(); activeDownloads--; processDownloadQueue();
+            }
+        }
+
+        async function requestFallbackZoom(chunkX, chunkZ, tileXOrig, tileYOrig) {
+            const fallbackZoom = ZOOM - 2;
+            if (fallbackZoom < 12) { renderChunk(chunkX, chunkZ, null, true); return; }
+            const factor = 4; const tileXFall = Math.floor(tileXOrig / factor); const tileYFall = Math.floor(tileYOrig / factor);
+            const offsetX = ((tileXOrig % factor) + factor) % factor; const offsetY = ((tileYOrig % factor) + factor) % factor;
+            const cropX = offsetX * 64; const cropY = offsetY * 64;
+            const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${fallbackZoom}/${tileYFall}/${tileXFall}`;
+            try {
+                const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const response = await fetch(url, { signal: controller.signal }); clearTimeout(timeoutId); if (!response.ok) throw new Error("Fallback HTTP error");
+                const blob = await response.blob(); if (blob.size < 5000) throw new Error("Fallback No Data");
+                const objectUrl = URL.createObjectURL(blob); const img = new Image(); img.crossOrigin = "anonymous";
+                img.onload = () => {
+                    const tempCanvas = document.createElement('canvas'); tempCanvas.width = 64; tempCanvas.height = 64;
+                    const ctx = tempCanvas.getContext('2d'); ctx.drawImage(img, cropX, cropY, 64, 64, 0, 0, 64, 64); URL.revokeObjectURL(objectUrl);
+                    const texture = new THREE.CanvasTexture(tempCanvas); texture.minFilter = THREE.LinearFilter;
+                    addTexture(`${chunkX},${chunkZ}`, texture);
+                    if (!loadedChunks[`${chunkX},${chunkZ}`]) { renderChunk(chunkX, chunkZ, texture, false); requestBuildings(chunkX, chunkZ, `${chunkX},${chunkZ}`); }
+                };
+                img.onerror = () => { URL.revokeObjectURL(objectUrl); if (!loadedChunks[`${chunkX},${chunkZ}`]) renderChunk(chunkX, chunkZ, null, true); };
+                img.src = objectUrl;
+            } catch (error) { if (!loadedChunks[`${chunkX},${chunkZ}`]) renderChunk(chunkX, chunkZ, null, true); }
+        }
+
+        // ==========================================================
+        // 2.2 FILA DE PRÉDIOS
+        // ==========================================================
+        const buildingQueue = []; let activeBuildings = 0; const MAX_BUILDING_CONCURRENT = 2; const loadedBuildingChunks = new Set();
+
+        function requestBuildings(chunkX, chunkZ, chunkKey) { if (loadedBuildingChunks.has(chunkKey) || buildingQueue.includes(chunkKey)) return; buildingQueue.push(chunkKey); processBuildingQueue(); }
+
+        async function processBuildingQueue() {
+            if (activeBuildings >= MAX_BUILDING_CONCURRENT || buildingQueue.length === 0) return;
+            activeBuildings++; const chunkKey = buildingQueue.shift(); const chunkGroup = loadedChunks[chunkKey];
+            if (!chunkGroup) { activeBuildings--; processBuildingQueue(); return; }
+
+            const cX = parseInt(chunkKey.split(',')[0]); const cZ = parseInt(chunkKey.split(',')[1]);
+            const centerLatLon = xzToLatLon((cX * CHUNK_SIZE) + (CHUNK_SIZE/2), (cZ * CHUNK_SIZE) - (CHUNK_SIZE/2));
+            const bbox = `${centerLatLon.lat - 0.002},${centerLatLon.lon - 0.003},${centerLatLon.lat + 0.002},${centerLatLon.lon + 0.003}`;
+            const query = `[out:json][timeout:5];way["building"](${bbox});out geom;`;
+            const url1 = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+            const url2 = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
+
+            try {
+                let response; const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 8000); 
+                try { response = await fetch(url1, { signal: controller.signal }); clearTimeout(timeoutId); } 
+                catch (err1) { clearTimeout(timeoutId); const controller2 = new AbortController(); const timeoutId2 = setTimeout(() => controller2.abort(), 8000); response = await fetch(url2, { signal: controller2.signal }); clearTimeout(timeoutId2); }
+
+                const json = await response.json(); loadedBuildingChunks.add(chunkKey);
+                if (!loadedChunks[chunkKey]) { activeBuildings--; processBuildingQueue(); return; }
+
+                const buildMat = new THREE.MeshLambertMaterial({ color: 0x888888, transparent: true, opacity: 0.85 });
+                json.elements.forEach(el => {
+                    if (!el.geometry || el.geometry.length < 3) return; let height = 0, isImportant = false;
+                    if (el.tags) {
+                        if (el.tags["height"]) height = parseFloat(el.tags["height"]);
+                        else if (el.tags["building:levels"]) height = parseFloat(el.tags["building:levels"]) * 3.5;
+                        if (height >= 15 || el.tags["amenity"] || el.tags["tourism"] || el.tags["historic"] || el.tags["building"] === "commercial") { isImportant = true; if (height === 0) height = 20 + Math.random() * 40; }
+                    }
+                    if (isImportant) {
+                        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+                        el.geometry.forEach(p => { const { x, z } = latLonToXZ(p.lat, p.lon); minX = Math.min(minX, x); maxX = Math.max(maxX, x); minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z); });
+                        const w = maxX - minX, d = maxZ - minZ;
+                        if (w > 0 && d > 0) {
+                            const geom = new THREE.BoxGeometry(w, height, d); const mesh = new THREE.Mesh(geom, buildMat);
+                            mesh.position.set((minX + maxX) / 2 - chunkGroup.position.x, 1 + height / 2, (minZ + maxZ) / 2 - chunkGroup.position.z);
+                            chunkGroup.add(mesh);
+                        }
+                    }
+                });
+            } catch (error) {}
+            activeBuildings--; processBuildingQueue();
+        }
+
+        function updateProgress() {
+            if (totalChunksToLoad > 0) {
+                loadedChunksCount++; const percent = Math.round((loadedChunksCount / totalChunksToLoad) * 100);
+                document.getElementById('progress-bar-fill-win95').style.width = `${percent}%`;
+                document.getElementById('progress-text-win95').innerText = `${percent}%`;
+                if (loadedChunksCount >= totalChunksToLoad) {
+                    document.getElementById('progress-text-win95').innerText = '100% - Pronto!';
+                    isInitialLoading = false; 
+                    if (loadingStuckTimer) clearTimeout(loadingStuckTimer);
+                    if (isTeleporting) {
+                        isTeleporting = false; hideLoadingScreen();
+                        const ll = xzToLatLon(airplane.position.x, airplane.position.z);
+                        updatePins(ll.lat, ll.lon);
+                    } else {
+                        hideLoadingScreen(); 
+                    }
+                }
+            }
+        }
+
+        function renderChunk(chunkX, chunkZ, texture, isProcedural) {
+            const chunkKey = `${chunkX},${chunkZ}`; const chunkGroup = new THREE.Group();
+            chunkGroup.position.set(chunkX * CHUNK_SIZE, 0, chunkZ * CHUNK_SIZE); scene.add(chunkGroup);
+            const groundGeo = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE); let groundMat;
+            if (isProcedural || !texture) {
+                groundMat = new THREE.MeshLambertMaterial({ color: 0x2d3a2d });
+                const groundMesh = new THREE.Mesh(groundGeo, groundMat); groundMesh.rotation.x = -Math.PI / 2; chunkGroup.add(groundMesh);
+                const roadMat = new THREE.LineBasicMaterial({ color: 0xffff00 });
+                for(let i=-2; i<=2; i++) { chunkGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i*100, 1, -250), new THREE.Vector3(i*100, 1, 250)]), roadMat)); chunkGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-250, 1, i*100), new THREE.Vector3(250, 1, i*100)]), roadMat)); }
+            } else {
+                groundMat = new THREE.MeshLambertMaterial({ map: texture });
+                const groundMesh = new THREE.Mesh(groundGeo, groundMat); groundMesh.rotation.x = -Math.PI / 2; chunkGroup.add(groundMesh);
+            }
+            loadedChunks[chunkKey] = chunkGroup;
+        }
+
+        // OTIMIZADO: Agora o loop varre o tamanho máximo do cone para carregar muito mais blocos à frente
+        function updateChunksDirectional(centerX, centerZ, forwardVec, rightVec) {
+            const R = STREAM_RADIUS; 
+            const R_FRONT = Math.ceil(R * configState.coneFront);
+            const R_SIDE = Math.ceil(R * configState.coneSide);
+            const R_BACK = Math.ceil(R * configState.coneBack);
+            const maxR = Math.max(R_FRONT, R_SIDE, R_BACK) + 1; // +1 para segurança
+
+            for(let x = -maxR; x <= maxR; x++) { 
+                for(let z = -maxR; z <= maxR; z++) {
+                    const lx = x * rightVec.x + z * rightVec.z, lz = x * forwardVec.x + z * forwardVec.z;
+                    const absLx = Math.abs(lx), absLz = Math.abs(lz); let canLoad = false;
+                    
+                    if (lz > 0) { if (lz <= R_FRONT && absLx <= R_SIDE) canLoad = true; }
+                    else if (lz >= -R_SIDE) { if (absLz <= R_SIDE && absLx <= R_SIDE) canLoad = true; }
+                    else { if (absLz <= R_BACK && absLx <= R_BACK) canLoad = true; }
+                    
+                    if (canLoad) requestChunk(centerX + x, centerZ + z);
+                }
+            }
+
+            for (const key in loadedChunks) {
+                const [cX, cZ] = key.split(',').map(Number); const dx = cX - centerX, dz = cZ - centerZ;
+                const lx = dx * rightVec.x + dz * rightVec.z, lz = dx * forwardVec.x + dz * forwardVec.z;
+                const absLx = Math.abs(lx), absLz = Math.abs(lz); let canUnload = true;
+                
+                if (lz > 0) { if (lz <= R_FRONT + 1 && absLx <= R_SIDE + 1) canUnload = false; }
+                else if (lz >= -R_SIDE - 1) { if (absLz <= R_SIDE + 1 && absLx <= R_SIDE + 1) canUnload = false; }
+                else { if (absLz <= R_BACK + 1 && absLx <= R_BACK + 1) canUnload = false; }
+                
+                if (canUnload) {
+                    const group = loadedChunks[key]; scene.remove(group);
+                    group.traverse(obj => { if (obj.geometry) obj.geometry.dispose(); if (obj.material) obj.material.dispose(); });
+                    delete loadedChunks[key];
+                    loadedBuildingChunks.delete(key); // CORREÇÃO: Limpa a lista de prédios para poder recarregar se voltar
+                }
+            }
+        }
+
+        // OTIMIZADO: Ordena os blocos do centro para fora para baixar o chão debaixo do avião primeiro
+        function loadInitialGrid(radius) {
+            const initialChunks = []; 
+            for(let x = -radius; x <= radius; x++) { 
+                for(let z = -radius; z <= radius; z++) initialChunks.push([x, z]); 
+            }
+            // Ordena por distância do centro (0,0)
+            initialChunks.sort((a, b) => (Math.abs(a[0]) + Math.abs(a[1])) - (Math.abs(b[0]) + Math.abs(b[1])));
+
+            document.getElementById('hangar-menu').style.display = 'none';
+            document.getElementById('loading-screen').style.display = 'flex';
+            document.getElementById('progress-container-win95').style.display = 'block';
+            isInitialLoading = true; 
+            totalChunksToLoad = initialChunks.length; loadedChunksCount = 0; initialChunks.forEach(([x, z]) => requestChunk(x, z));
+            if (loadingStuckTimer) clearTimeout(loadingStuckTimer);
+            loadingStuckTimer = setTimeout(() => {
+                if (loadedChunksCount < totalChunksToLoad) {
+                    document.getElementById('progress-text-win95').innerText = 'Pronto! (Alguns tiles falharam)';
+                    isInitialLoading = false; 
+                    if (isTeleporting) { isTeleporting = false; hideLoadingScreen(); }
+                    else hideLoadingScreen();
+                }
+            }, 30000);
+        }
+
+        // ==========================================================
+        // 3. VEÍCULO E CONFIG
+        // ==========================================================
+        const airplane = new THREE.Group(); airplane.position.set(0, 200, 0); scene.add(airplane); 
+        let loadedModel = null; const loader = new GLTFLoader(); const modelUrl = 'https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/airplane.glb';
+        
+        const configState = { scale: 30, offsetX: 0, offsetY: -140, offsetZ: -80, rotX: 0, rotY: 0, rotZ: 0, camZoom: 0.5, hudScale: 0.5, hudX: 0, hudY: -40, lat: 40.7580, lon: -73.9855, zoom: 13, initialRadius: 3, streamRadius: 1000, fogDistance: 2000, coneFront: 2.0, coneSide: 2.0, coneBack: 2.0 };
+
+        function applyConfig() {
+            idbSet('configs', 'editor_state', JSON.stringify(configState));
+            if (loadedModel) {
+                loadedModel.scale.set(configState.scale, configState.scale, configState.scale);
+                loadedModel.position.set(configState.offsetX, configState.offsetY, configState.offsetZ);
+                loadedModel.rotation.set(THREE.MathUtils.degToRad(configState.rotX), THREE.MathUtils.degToRad(configState.rotY), THREE.MathUtils.degToRad(configState.rotZ));
+            }
+            if (scene.fog) scene.fog.far = configState.fogDistance;
+            const hudBottom = document.getElementById('hud-bottom');
+            if (hudBottom) hudBottom.style.transform = `translateX(calc(-50% + ${configState.hudX}px)) translateY(${-configState.hudY}px) scale(${configState.hudScale})`;
+        }
+
+        function hideLoadingScreen() {
+            const ls = document.getElementById('loading-screen');
+            ls.style.opacity = '0'; setTimeout(() => { ls.style.display = 'none'; ls.style.opacity = '1'; }, 500);
+            document.getElementById('hud').style.display = 'block'; 
+            
+            isInGameMode = true; isPaused = false; 
+            hudState = 0; 
+            applyHudVisibility(); 
+            
+            document.getElementById('toggle-config-btn').style.display = 'flex';
+            document.getElementById('toggle-hangar-btn').style.display = 'flex';
+            document.getElementById('toggle-hud-btn').style.display = 'flex';
+            document.getElementById('toggle-photo-btn').style.display = 'flex';
+            document.getElementById('fullscreen-btn').style.display = 'flex';
+
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
+            if (isMobile) { tK.style.bottom = `${0.5 * (180 - 40)}px`; } 
+            else { document.getElementById('controls-info').style.display = 'block'; }
+            orbitControls.enabled = false;
+            pinGroup.visible = true; 
+        }
+
+        async function initAssets() {
+            await initDB(); const sc = await idbGet('configs', 'editor_state');
+            if (sc) { try { Object.assign(configState, JSON.parse(sc)); } catch(e) {} }
+            ['scale', 'offsetX', 'offsetY', 'offsetZ', 'rotX', 'rotY', 'rotZ', 'camZoom', 'hudScale', 'hudX', 'hudY', 'lat', 'lon', 'zoom', 'initialRadius', 'streamRadius', 'fogDistance', 'coneFront', 'coneSide', 'coneBack'].forEach(p => { const el = document.getElementById(`input-${p}`); if (el) el.value = configState[p]; });
+            const sm = await idbGet('models', 'airplane_glb');
+            if (sm) { loader.parse(sm, '', (gltf) => { loadedModel = gltf.scene; airplane.add(loadedModel); applyConfig(); }); } 
+            else { try { const r = await fetch(modelUrl); const b = await r.arrayBuffer(); idbSet('models', 'airplane_glb', b); loader.parse(b, '', (gltf) => { loadedModel = gltf.scene; airplane.add(loadedModel); applyConfig(); }); } catch (e) {} }
+            applyConfig();
+            await loadGameState();
+        }
+
+        // ==========================================================
+        // 4. UI LÓGICA E EVENTOS
+        // ==========================================================
+        const allProps = ['scale', 'offsetX', 'offsetY', 'offsetZ', 'rotX', 'rotY', 'rotZ', 'camZoom', 'hudScale', 'hudX', 'hudY', 'lat', 'lon', 'zoom', 'initialRadius', 'streamRadius', 'fogDistance', 'coneFront', 'coneSide', 'coneBack'];
+        allProps.forEach(prop => {
+            const input = document.getElementById(`input-${prop}`); if (!input) return;
+            const mBtn = document.querySelector(`.btn-minus[data-prop="${prop}"]`); const pBtn = document.querySelector(`.btn-plus[data-prop="${prop}"]`);
+            input.addEventListener('input', (e) => { let v = parseFloat(e.target.value); if (!isNaN(v)) { configState[prop] = v; applyConfig(); } });
+            if (mBtn) mBtn.addEventListener('click', () => { configState[prop] -= parseFloat(mBtn.dataset.step); input.value = configState[prop].toFixed(2); applyConfig(); });
+            if (pBtn) pBtn.addEventListener('click', () => { configState[prop] += parseFloat(pBtn.dataset.step); input.value = configState[prop].toFixed(2); applyConfig(); });
+        });
+
+        let hudState = 0; 
+        let isPhotoMode = false;
+        let isPaused = false; 
+        let isAutopilotOn = false;
+
+        function applyHudVisibility() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
+            const configOpen = document.getElementById('left-panel').classList.contains('open');
+
+            if (!isInGameMode) {
+                document.getElementById('toggle-search-btn').style.display = 'none';
+                document.getElementById('mission-btn').style.display = 'none';
+                document.getElementById('autopilot-btn').style.display = 'none';
+                document.getElementById('toggle-hud-btn').style.display = 'none';
+                document.getElementById('toggle-hangar-btn').style.display = 'none';
+                document.getElementById('toggle-photo-btn').style.display = 'none';
+                document.getElementById('hud-top').style.display = 'none';
+                document.getElementById('hud-bottom').style.display = 'none';
+                document.querySelectorAll('.touch-ui').forEach(el => el.style.display = 'none');
+                return;
+            }
+
+            let showTouch = isMobile && !configOpen;
+            let showButtons = !configOpen;
+            let showTop = true;
+            let showBottom = true;
+
+            if (hudState === 1) showButtons = false;
+            if (hudState === 2) { showButtons = false; showTop = false; }
+            if (hudState === 3) { showButtons = false; showTop = false; showBottom = false; }
+            if (hudState === 4) { showButtons = false; showTop = false; showBottom = false; showTouch = false; }
+            
+            if (configOpen) {
+                showTouch = false;
+                showButtons = false;
+            }
+
+            document.querySelectorAll('.touch-ui').forEach(el => el.style.display = showTouch ? 'block' : 'none');
+            document.getElementById('toggle-search-btn').style.display = showButtons ? 'flex' : 'none';
+            document.getElementById('mission-btn').style.display = showButtons ? 'flex' : 'none';
+            document.getElementById('toggle-hangar-btn').style.display = showButtons ? 'flex' : 'none';
+            
+            // Botão do piloto automático só aparece se houver rota ativa
+            const apBtn = document.getElementById('autopilot-btn');
+            if (apBtn) apBtn.style.display = (showButtons && isRouteActive) ? 'flex' : 'none';
+            if (isAutopilotOn && apBtn) apBtn.style.background = '#225522'; // Verde quando ligado
+            else if (apBtn) apBtn.style.background = '#444'; // Cinza padrão
+
+            document.getElementById('hud-top').style.display = showTop ? 'flex' : 'none';
+            document.getElementById('hud-bottom').style.display = showBottom ? 'flex' : 'none';
+            
+            const tK = document.getElementById('throttle-knob');
+            if (tK && showTouch) tK.style.bottom = `${0.5 * (180 - 40)}px`;
+        }
+
+        document.getElementById('toggle-config-btn').addEventListener('click', () => { 
+            const panel = document.getElementById('left-panel');
+            panel.classList.toggle('open'); 
+            isPaused = panel.classList.contains('open'); 
+            applyHudVisibility();
+        });
+
+        document.getElementById('toggle-hangar-btn').addEventListener('click', () => { 
+            isPaused = true; 
+            document.getElementById('hangar-menu').style.display = 'flex';
+            if (menuMusic.paused) playRandomMenuMusic(); 
+        });
+
+        document.getElementById('toggle-hud-btn').addEventListener('click', () => {
+            hudState = (hudState + 1) % 5;
+            applyHudVisibility();
+        });
+
+        document.getElementById('toggle-photo-btn').addEventListener('click', () => {
+            isPhotoMode = !isPhotoMode;
+            if (isPhotoMode) {
+                isPaused = true; 
+                orbitControls.enabled = true;
+                orbitControls.target.copy(airplane.position);
+                
+                document.getElementById('toggle-config-btn').style.display = 'none';
+                document.getElementById('toggle-hangar-btn').style.display = 'none';
+                document.getElementById('toggle-search-btn').style.display = 'none';
+                document.getElementById('mission-btn').style.display = 'none';
+                document.getElementById('autopilot-btn').style.display = 'none';
+                document.getElementById('toggle-hud-btn').style.display = 'none';
+                document.getElementById('fullscreen-btn').style.display = 'none';
+                document.getElementById('hud-top').style.display = 'none';
+                document.getElementById('hud-bottom').style.display = 'none';
+                document.querySelectorAll('.touch-ui').forEach(el => el.style.display = 'none');
+                document.getElementById('controls-info').style.display = 'none';
+                
+                if (routeArrow) routeArrow.visible = false; 
+                
+                document.getElementById('toggle-photo-btn').style.display = 'flex';
+                document.getElementById('shutter-btn').style.display = 'flex';
+            } else {
+                isPaused = false; 
+                orbitControls.enabled = false;
+                document.getElementById('shutter-btn').style.display = 'none';
+                if (isRouteActive && routeArrow) routeArrow.visible = true; 
+                applyHudVisibility();
+                document.getElementById('toggle-config-btn').style.display = 'flex';
+                document.getElementById('toggle-hangar-btn').style.display = 'flex';
+                document.getElementById('toggle-hud-btn').style.display = 'flex';
+                document.getElementById('toggle-photo-btn').style.display = 'flex';
+                document.getElementById('fullscreen-btn').style.display = 'flex';
+            }
+        });
+
+        document.getElementById('shutter-btn').addEventListener('click', () => {
+            renderer.render(scene, camera); 
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = `fos_screenshot_${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast(translations[currentLang].photo_saved);
+        });
+
+        document.getElementById('toggle-search-btn').addEventListener('click', () => { document.getElementById('search-modal').style.display = 'flex'; });
+        document.getElementById('search-close-btn').addEventListener('click', () => { document.getElementById('search-modal').style.display = 'none'; });
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            const cityVal = document.getElementById('city-select').value;
+            const [lat, lon] = cityVal.split(',');
+            
+            if (isInGameMode && configState.lat == lat && configState.lon == lon) {
+                document.getElementById('hangar-menu').style.display = 'none';
+                isPaused = false;
+            } else {
+                configState.lat = parseFloat(lat); configState.lon = parseFloat(lon);
+                document.getElementById('input-lat').value = configState.lat;
+                document.getElementById('input-lon').value = configState.lon;
+                
+                if (isInGameMode) clearAllMapData(); 
+                
+                ORIGIN_LAT = configState.lat; ORIGIN_LON = configState.lon; ZOOM = configState.zoom;
+                const initialRadius = configState.initialRadius; CHUNK_SIZE = 1000 / Math.pow(2, ZOOM - 15);
+                STREAM_RADIUS = Math.ceil((configState.fogDistance + configState.streamRadius) / CHUNK_SIZE); 
+                document.getElementById('left-panel').classList.remove('open'); 
+                menuMusic.pause(); 
+                loadInitialGrid(initialRadius);
+            }
+        });
+
+        document.getElementById('enter-hangar-btn').addEventListener('click', () => {
+            document.getElementById('title-screen').style.display = 'none';
+            document.getElementById('hangar-menu').style.display = 'flex';
+            if (menuMusic.paused) playRandomMenuMusic(); 
+        });
+
+        document.getElementById('back-title-btn').addEventListener('click', () => {
+            document.getElementById('hangar-menu').style.display = 'none';
+            document.getElementById('title-screen').style.display = 'flex';
+            menuMusic.pause();
+            menuMusic.currentTime = 0;
+        });
+        
+        document.getElementById('fullscreen-btn').addEventListener('click', () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); });
+
+        document.getElementById('return-btn').addEventListener('click', () => {
+            airplane.position.y = 200; state.speed = 0; state.vx = 0; state.vy = 0; state.vz = 0; state.throttle = 50; 
+            const euler = new THREE.Euler().setFromQuaternion(airplane.quaternion, 'YXZ');
+            airplane.quaternion.setFromEuler(new THREE.Euler(0, euler.y, 0, 'YXZ'));
+            document.getElementById('return-btn').style.display = 'none';
+            const tK = document.getElementById('throttle-knob'); if (tK) tK.style.bottom = `${0.5 * (180 - 40)}px`;
+        });
+
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            toast.innerText = msg;
+            toast.className = "show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        function warmUpTTS() {
+            if ('speechSynthesis' in window) {
+                const u = new SpeechSynthesisUtterance(' ');
+                u.volume = 0;
+                window.speechSynthesis.speak(u);
+            }
+        }
+
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = currentLang === 'pt' ? 'pt-BR' : currentLang === 'en' ? 'en-US' : 'es-ES';
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        let isTeleporting = false;
+
+        async function searchCity(mode) {
+            const name = document.getElementById('city-search-input').value;
+            if (!name) return;
+            document.getElementById('search-go-btn').innerText = '...';
+            document.getElementById('search-route-btn').innerText = '...';
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(name)}`;
+                const res = await fetch(url); const data = await res.json();
+                if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat); const lon = parseFloat(data[0].lon);
+                    
+                    if (mode === 'go') {
+                        document.getElementById('search-modal').style.display = 'none'; 
+                        
+                        if (isRouteActive) cancelMission();
+
+                        isTeleporting = true; isInGameMode = false; isPaused = false; orbitControls.enabled = false;
+                        const ls = document.getElementById('loading-screen');
+                        ls.style.opacity = '1'; ls.style.display = 'flex';
+                        document.getElementById('progress-container-win95').style.display = 'block';
+                        document.getElementById('progress-bar-fill-win95').style.width = '0%';
+                        document.getElementById('progress-text-win95').innerText = '0%';
+
+                        document.getElementById('toggle-config-btn').style.display = 'none';
+                        document.getElementById('toggle-hangar-btn').style.display = 'none';
+                        document.getElementById('toggle-search-btn').style.display = 'none';
+                        document.getElementById('mission-btn').style.display = 'none';
+                        document.getElementById('autopilot-btn').style.display = 'none';
+                        document.getElementById('toggle-hud-btn').style.display = 'none';
+                        document.getElementById('toggle-photo-btn').style.display = 'none';
+                        document.getElementById('hud-top').style.display = 'none';
+                        document.getElementById('hud-bottom').style.display = 'none';
+                        document.querySelectorAll('.touch-ui').forEach(el => el.style.display = 'none');
+                        document.getElementById('controls-info').style.display = 'none';
+
+                        ORIGIN_LAT = lat; ORIGIN_LON = lon; configState.lat = lat; configState.lon = lon; applyConfig();
+                        airplane.position.set(0, 200, 0); 
+                        ocean.position.set(0, -10, 0);
+                        clearAllMapData();
+
+                        ZOOM = configState.zoom; CHUNK_SIZE = 1000 / Math.pow(2, ZOOM - 15);
+                        STREAM_RADIUS = Math.ceil((configState.fogDistance + configState.streamRadius) / CHUNK_SIZE); 
+                        loadInitialGrid(configState.initialRadius);
+                    } else {
+                        const { x, z } = latLonToXZ(lat, lon);
+                        destX = x; destZ = z; destName = data[0].display_name.split(',')[0];
+                        isRouteActive = true;
+                        document.getElementById('radar-dot').style.display = 'block';
+                        if (!routeArrow) createRouteArrow();
+                        routeArrow.visible = true;
+                        document.getElementById('search-modal').style.display = 'none';
+                        showToast(translations[currentLang].mission_accepted);
+                        speak(translations[currentLang].mission_accepted);
+                        applyHudVisibility(); // Atualiza para mostrar o botão do piloto automático
+                    }
+
+                } else { showToast(translations[currentLang].city_not_found); }
+            } catch(e) { console.error(e); showToast(translations[currentLang].error_search); isTeleporting = false; isInGameMode = true; }
+            document.getElementById('search-go-btn').innerText = translations[currentLang].go;
+            document.getElementById('search-route-btn').innerText = translations[currentLang].route;
+        }
+
+        function clearAllMapData() {
+            for (const key in loadedChunks) {
+                const group = loadedChunks[key]; scene.remove(group);
+                group.traverse(obj => { if (obj.geometry) obj.geometry.dispose(); if (obj.material) obj.material.dispose(); });
+                delete loadedChunks[key];
+            }
+            textureCache.forEach(tex => tex.dispose()); textureCache.clear();
+            loadedBuildingChunks.clear(); downloadQueue.length = 0; buildingQueue.length = 0; queuedSet.clear();
+            while(pinGroup.children.length > 0) {
+                const child = pinGroup.children[0];
+                if (child.material.map) child.material.map.dispose();
+                child.material.dispose(); pinGroup.remove(child);
+            }
+        }
+
+        document.getElementById('search-go-btn').addEventListener('click', () => searchCity('go'));
+        document.getElementById('search-route-btn').addEventListener('click', () => searchCity('route'));
+        document.getElementById('city-search-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchCity('go'); });
+
+        // ==========================================================
+        // 5. PINS DE CIDADES E SETA DE ROTA (MELHORADO)
+        // ==========================================================
+        const pinGroup = new THREE.Group(); scene.add(pinGroup);
+        let pinUpdateTimer = 0;
+
+        function createTextSprite(text) {
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, 512, 128);
+            ctx.font = 'bold 48px monospace'; ctx.fillStyle = 'white';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 256, 64);
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, fog: false });
+            const sprite = new THREE.Sprite(material); sprite.scale.set(2000, 500, 1);
+            return sprite;
+        }
+
+        async function updatePins(lat, lon) {
+            // NOVA QUERY: Busca nodes, ways e relations (áreas) e usa 'out center' para pegar o meio delas
+            const query = `[out:json][timeout:15];(
+                node["place"~"city|town|village|hamlet|municipality"](around:50000, ${lat}, ${lon});
+                way["place"~"city|town|village|hamlet|municipality"](around:50000, ${lat}, ${lon});
+                relation["place"~"city|town|village|hamlet|municipality"](around:50000, ${lat}, ${lon});
+                node["aeroway"="aerodrome"](around:50000, ${lat}, ${lon});
+                way["aeroway"="aerodrome"](around:50000, ${lat}, ${lon});
+            );out center body 100;`; // LIMITE AUMENTADO PARA 100
+            
+            const url1 = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+            const url2 = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
+            try {
+                let res;
+                try { res = await fetch(url1); if(!res.ok) throw new Error('S1'); }
+                catch(e) { res = await fetch(url2); if(!res.ok) throw new Error('S2'); }
+                const data = await res.json();
+                
+                while(pinGroup.children.length > 0) {
+                    const child = pinGroup.children[0];
+                    if (child.material.map) child.material.map.dispose();
+                    child.material.dispose(); pinGroup.remove(child);
+                }
+                
+                data.elements.forEach(el => {
+                    let elLat, elLon, namePrefix = "";
+                    
+                    if (el.type === 'node') {
+                        elLat = el.lat; elLon = el.lon;
+                    } else if (el.center) {
+                        elLat = el.center.lat; elLon = el.center.lon;
+                    } else {
+                        return;
+                    }
+                    
+                    if (el.tags && el.tags.name) {
+                        if (el.tags.aeroway) namePrefix = "✈️ "; // Adiciona ícone de avião para aeroportos
+                        const { x, z } = latLonToXZ(elLat, elLon);
+                        const sprite = createTextSprite(namePrefix + el.tags.name);
+                        sprite.position.set(x, 200, z);
+                        pinGroup.add(sprite);
+                    }
+                });
+            } catch(e) { console.warn("Erro ao buscar pins:", e); }
+        }
+
+        let routeArrow = null;
+        let destX = 0, destZ = 0, destName = "";
+        let isRouteActive = false;
+
+        function createRouteArrow() {
+            const shape = new THREE.Shape();
+            shape.moveTo(0, -15);
+            shape.lineTo(20, 5);
+            shape.lineTo(10, 5);
+            shape.lineTo(0, -5);
+            shape.lineTo(-10, 5);
+            shape.lineTo(-20, 5);
+            shape.lineTo(0, -15);
+            
+            const extrudeSettings = { depth: 4, bevelEnabled: true, bevelThickness: 2, bevelSize: 1.5, bevelSegments: 3 };
+            const arrowGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            arrowGeo.center();
+            arrowGeo.rotateX(-Math.PI / 2); 
+            
+            const arrowMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.9, fog: false, side: THREE.DoubleSide });
+            routeArrow = new THREE.Mesh(arrowGeo, arrowMat);
+            scene.add(routeArrow);
+        }
+
+        function updateRouteAndRadar() {
+            if (!isRouteActive) return;
+
+            const dx = destX - airplane.position.x;
+            const dz = destZ - airplane.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            const distKm = (dist / 1000).toFixed(1);
+            
+            document.getElementById('radar-dist').innerText = `${distKm} km`;
+
+            const destVec = new THREE.Vector3(dx, 0, dz);
+            const localDest = destVec.clone().applyQuaternion(airplane.quaternion.clone().invert());
+            
+            const localLen = Math.sqrt(localDest.x*localDest.x + localDest.z*localDest.z);
+            const normX = localLen > 0 ? localDest.x / localLen : 0;
+            const normZ = localLen > 0 ? localDest.z / localLen : 0;
+            
+            const maxRadarDist = 50000; 
+            const radarRadius = 60; 
+            const distFactor = Math.min(1, dist / maxRadarDist);
+            
+            const dotX = normX * distFactor * radarRadius;
+            const dotY = normZ * distFactor * radarRadius;
+            
+            document.getElementById('radar-dot').style.transform = `translate(calc(-50% + ${dotX}px), calc(-50% + ${dotY}px))`;
+
+            const forwardVec = new THREE.Vector3(0, 0, -1).applyQuaternion(airplane.quaternion);
+            forwardVec.y = 0; forwardVec.normalize();
+            const arrowPos = airplane.position.clone().add(forwardVec.multiplyScalar(100));
+            arrowPos.y = airplane.position.y;
+            routeArrow.position.copy(arrowPos);
+            routeArrow.lookAt(new THREE.Vector3(destX, arrowPos.y, destZ));
+
+            if (dist < 1000) {
+                if (currentMission && airplane.position.y < currentMission.maxAlt) { 
+                    completeMission();
+                }
+            }
+        }
+
+        // ==========================================================
+        // 6. SISTEMA DE MISSÕES VARIADAS
+        // ==========================================================
+        let currentMission = null;
+        let missionModalMode = 'generate'; 
+
+        function updateMissionModalText() {
+            if (!currentMission) return;
+            const t = translations[currentLang];
+            
+            let typeText = "";
+            if (currentMission.type === 'vip') typeText = t.mission_type_vip + "\n" + t.mission_alt_vip;
+            else if (currentMission.type === 'cargo') typeText = t.mission_type_cargo + "\n" + t.mission_alt_cargo;
+            else if (currentMission.type === 'photo') typeText = t.mission_type_photo + "\n" + t.mission_alt_photo;
+
+            const desc = `${typeText}\n${t.mission_dest.replace('{city}', currentMission.name)}\n${t.mission_dist.replace('{dist}', currentMission.distKm.toFixed(0))}\n${t.mission_reward.replace('{currency}', currencySymbol).replace('{reward}', currentMission.reward)}`;
+            document.getElementById('mission-desc').innerText = desc;
+        }
+
+        function generateMission() {
+            const t = translations[currentLang];
+            document.getElementById('mission-title').innerText = t.mission_title;
+            document.getElementById('mission-accept').innerText = t.mission_accept;
+            document.getElementById('mission-reject').innerText = t.mission_reject;
+
+            const types = ['vip', 'cargo', 'photo'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            let distKm, reward, maxAlt;
+
+            if (type === 'vip') {
+                distKm = 20 + Math.random() * 20; // 20 a 40 km
+                reward = Math.floor(distKm * 10);
+                maxAlt = 500; // Pousar
+            } else if (type === 'cargo') {
+                distKm = 10 + Math.random() * 15; // 10 a 25 km
+                reward = Math.floor(distKm * 15); // Mais difícil, paga mais
+                maxAlt = 300; // Pousar mais baixo
+            } else { // photo
+                distKm = 5 + Math.random() * 10; // 5 a 15 km
+                reward = 500 + Math.floor(distKm * 20); // Pagamento base + bônus
+                maxAlt = 1500; // Só sobrevoar
+            }
+
+            const ll = xzToLatLon(airplane.position.x, airplane.position.z);
+            const angle = Math.random() * Math.PI * 2;
+            const dx = Math.cos(angle) * distKm * 1000;
+            const dz = Math.sin(angle) * distKm * 1000;
+            
+            const destLat = ll.lat + (dz / EARTH_RADIUS) * (180 / Math.PI);
+            const destLon = ll.lon + (dx / (EARTH_RADIUS * Math.cos(ORIGIN_LAT * Math.PI / 180))) * (180 / Math.PI);
+            
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${destLat}&lon=${destLon}&zoom=10`)
+                .then(res => res.json())
+                .then(data => {
+                    // NOVA LÓGICA DE FALLBACK: Busca várias tags para evitar "Área Remota"
+                    const addr = data.address;
+                    const cityName = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state_district || addr.state || addr.suburb || addr.neighbourhood || "Área Remota";
+                    
+                    currentMission = { destX: dx, destZ: dz, name: cityName, reward: reward, distKm: distKm, type: type, maxAlt: maxAlt };
+                    updateMissionModalText();
+                    document.getElementById('mission-modal').style.display = 'flex';
+                })
+                .catch(() => {
+                    currentMission = { destX: dx, destZ: dz, name: "Local Remoto", reward: reward, distKm: distKm, type: type, maxAlt: maxAlt };
+                    updateMissionModalText();
+                    document.getElementById('mission-modal').style.display = 'flex';
+                });
+        }
+
+        function acceptMission() {
+            if (!currentMission) return;
+            destX = currentMission.destX + airplane.position.x; 
+            destZ = currentMission.destZ + airplane.position.z;
+            destName = currentMission.name;
+            isRouteActive = true;
+            document.getElementById('radar-dot').style.display = 'block';
+            if (!routeArrow) createRouteArrow();
+            routeArrow.visible = true;
+            document.getElementById('mission-modal').style.display = 'none';
+            showToast(translations[currentLang].mission_accepted);
+            speak(translations[currentLang].mission_accepted);
+            applyHudVisibility(); // Mostra o botão do piloto automático
+        }
+
+        function cancelMission() {
+            isRouteActive = false;
+            if (routeArrow) routeArrow.visible = false;
+            document.getElementById('radar-dot').style.display = 'none';
+            currentMission = null;
+            showToast(translations[currentLang].mission_cancelled);
+            if (isAutopilotOn) toggleAutopilot(); // Desliga o piloto automático se cancelar a missão
+            applyHudVisibility();
+        }
+
+        function completeMission() {
+            gameState.money += currentMission.reward;
+            saveGameState(); 
+            updateMoneyUI();
+            const msg = translations[currentLang].destination_reached.replace('{currency}', currencySymbol).replace('{reward}', currentMission.reward);
+            showToast(msg);
+            speak(msg);
+            isRouteActive = false;
+            routeArrow.visible = false;
+            document.getElementById('radar-dot').style.display = 'none';
+            currentMission = null;
+            if (isAutopilotOn) toggleAutopilot(); // Desliga o piloto automático ao completar
+            applyHudVisibility();
+        }
+
+        document.getElementById('mission-btn').addEventListener('click', () => {
+            if (isRouteActive) {
+                missionModalMode = 'cancel';
+                const t = translations[currentLang];
+                document.getElementById('mission-title').innerText = t.cancel_mission_title;
+                document.getElementById('mission-desc').innerText = t.cancel_mission_desc;
+                document.getElementById('mission-accept').innerText = t.yes;
+                document.getElementById('mission-reject').innerText = t.no;
+                document.getElementById('mission-modal').style.display = 'flex';
+            } else {
+                generateMission();
+            }
+        });
+
+        document.getElementById('mission-accept').addEventListener('click', () => {
+            if (missionModalMode === 'cancel') {
+                cancelMission();
+                document.getElementById('mission-modal').style.display = 'none';
+            } else {
+                acceptMission();
+            }
+            missionModalMode = 'generate'; 
+        });
+
+        document.getElementById('mission-reject').addEventListener('click', () => { 
+            document.getElementById('mission-modal').style.display = 'none'; 
+            missionModalMode = 'generate'; 
+        });
+
+        // ==========================================================
+        // 6.1 PILOTO AUTOMÁTICO (REESCRITO COM VETORES)
+        // ==========================================================
+        function toggleAutopilot() {
+            if (!isRouteActive) {
+                showToast(translations[currentLang].ap_err);
+                return;
+            }
+            isAutopilotOn = !isAutopilotOn;
+            showToast(isAutopilotOn ? translations[currentLang].ap_on : translations[currentLang].ap_off);
+            applyHudVisibility();
+        }
+        document.getElementById('autopilot-btn').addEventListener('click', toggleAutopilot);
+
+        function updateAutopilot() {
+            if (!isAutopilotOn || !isRouteActive) return;
+
+            const dx = destX - airplane.position.x;
+            const dz = destZ - airplane.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+
+            // 1. DIREÇÃO (ROLL) - Usando Vetores Direcionais para evitar "Gimbal Lock"
+            const forwardVec = new THREE.Vector3(0, 0, -1).applyQuaternion(airplane.quaternion);
+            forwardVec.y = 0; 
+            forwardVec.normalize();
+            
+            const destVec = new THREE.Vector3(dx, 0, dz).normalize();
+            
+            // Produto vetorial (Y) e escalar para achar o ângulo exato de curva
+            let cross = forwardVec.x * destVec.z - forwardVec.z * destVec.x; 
+            let dot = forwardVec.x * destVec.x + forwardVec.z * destVec.z;
+            let headingError = Math.atan2(cross, dot); // Positivo = destino à direita
+            
+            // Se o erro for muito pequeno, voa reto
+            if (Math.abs(headingError) < 0.05) {
+                state.roll = 0;
+            } else {
+                // Virada suave baseada no erro. Roll negativo vira para a direita no padrão do jogo.
+                state.roll = -headingError * 3.0; 
+                state.roll = Math.max(-0.6, Math.min(0.6, state.roll)); // Limita a inclinação para não capotar
+            }
+            state.yaw = 0; // Mantém o leme reto, vira só com a inclinação
+
+            // 2. ALTITUDE (PITCH)
+            let targetAlt = 1000; // Cruzeiro
+            if (dist < 5000) { // Inicia descida a 5km do alvo
+                targetAlt = currentMission ? currentMission.maxAlt + 50 : 200; 
+            }
+            
+            const altError = targetAlt - airplane.position.y;
+            if (Math.abs(altError) < 50) {
+                state.pitch = 0; // Nivelado
+            } else {
+                // altError > 0: precisa subir (pitch up -> state.pitch negativo no jogo)
+                state.pitch = -altError * 0.003;
+                state.pitch = Math.max(-0.3, Math.min(0.3, state.pitch)); // Limita o picado/nariz em cima
+            }
+
+            // 3. POTÊNCIA (THROTTLE)
+            if (altError > 100) {
+                state.throttle = 100; // Subindo exige potência máxima
+            } else if (dist < 3000 && airplane.position.y < 600) {
+                state.throttle = 35; // Descida final para pouso
+            } else {
+                state.throttle = 75; // Cruzeiro normal
+            }
+
+            // Atualiza visual da manete na tela
+            if (tK) tK.style.bottom = `${(state.throttle/100) * (180 - 40)}px`;
+        }
+
+        // ==========================================================
+        // 7. INPUTS, FÍSICA E INSTRUMENTOS
+        // ==========================================================
+        const state = { speed: 0, maxSpeed: 75, minSpeed: 10, throttle: 50, pitch: 0, roll: 0, yaw: 0, pitchSpeed: 0.02, rollSpeed: 0.04, yawSpeed: 0.01, isHighAltitude: false };
+        const tK = document.getElementById('throttle-knob');
+
+        const keys = {};
+        window.addEventListener('keydown', (e) => { if (document.activeElement.id === 'city-search-input') return; keys[e.key.toLowerCase()] = true; if(isAutopilotOn) toggleAutopilot(); });
+        window.addEventListener('keyup', (e) => { if (document.activeElement.id === 'city-search-input') return; keys[e.key.toLowerCase()] = false; });
+        const touchState = { pitch: 0, roll: 0, yaw: 0, throttle: 50 };
+        
+        const jZ = document.getElementById('joystick-zone'), jK = document.getElementById('joystick-knob');
+        let jA = false, jX = 0, jY = 0;
+        jZ.addEventListener('touchstart', (e) => { e.preventDefault(); if(isAutopilotOn) toggleAutopilot(); jA = true; const r = document.getElementById('joystick-base').getBoundingClientRect(); jX = r.left + r.width/2; jY = r.top + r.height/2; }, { passive: false });
+        jZ.addEventListener('touchmove', (e) => { e.preventDefault(); if(!jA) return; const t = e.touches[0]; let dx = t.clientX - jX, dy = t.clientY - jY; const md = 30; let d = Math.sqrt(dx*dx + dy*dy); if(d>md){dx=(dx/d)*md; dy=(dy/d)*md;} jK.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; touchState.roll = -dx/md; touchState.pitch = dy/md; }, { passive: false });
+        jZ.addEventListener('touchend', () => { jA = false; touchState.roll = 0; touchState.pitch = 0; jK.style.transform = 'translate(-50%, -50%)'; });
+        
+        const tB = document.getElementById('throttle-base');
+        tB.addEventListener('touchstart', (e) => { e.preventDefault(); if(isAutopilotOn) toggleAutopilot(); uTT(e); }, { passive: false });
+        tB.addEventListener('touchmove', (e) => { e.preventDefault(); uTT(e); }, { passive: false });
+        function uTT(e) { const t = e.touches[0]; const r = tB.getBoundingClientRect(); let y = t.clientY - r.top; let p = 1 - (y/r.height); p = Math.max(0, Math.min(1, p)); touchState.throttle = p*100; tK.style.bottom = `${p*(r.height-40)}px`; }
+        
+        document.getElementById('yaw-left').addEventListener('touchstart', (e) => { e.preventDefault(); if(isAutopilotOn) toggleAutopilot(); touchState.yaw = 1; }, { passive: false });
+        document.getElementById('yaw-left').addEventListener('touchend', () => touchState.yaw = 0);
+        document.getElementById('yaw-right').addEventListener('touchstart', (e) => { e.preventDefault(); if(isAutopilotOn) toggleAutopilot(); touchState.yaw = -1; }, { passive: false });
+        document.getElementById('yaw-right').addEventListener('touchend', () => touchState.yaw = 0);
+
+        function updateInput() {
+            if (keys['shift']) state.throttle = Math.min(100, state.throttle + 1);
+            else if (keys['control']) state.throttle = Math.max(0, state.throttle - 1);
+            else if (!jA && !isAutopilotOn) state.throttle = touchState.throttle;
+            
+            if (isAutopilotOn) return; // Se o piloto automático está ligado, não lê os inputs manuais de atitude
+            
+            if (keys['w']) state.pitch = -1; else if (keys['s']) state.pitch = 1; else state.pitch = touchState.pitch;
+            if (keys['a']) state.roll = 1; else if (keys['d']) state.roll = -1; else state.roll = touchState.roll;
+            if (keys['q']) state.yaw = 1; else if (keys['e']) state.yaw = -1; else state.yaw = touchState.yaw;
+        }
+
+        let chunkThrottle = 0; let isInGameMode = false;
+
+        function updatePhysics() {
+            const ts = (state.throttle / 100) * state.maxSpeed; state.speed += (ts - state.speed) * 0.01;
+            if (state.speed < state.minSpeed) airplane.position.y -= 0.5;
+            airplane.rotateX(state.pitch * state.pitchSpeed); airplane.rotateZ(state.roll * state.rollSpeed); airplane.rotateY(state.yaw * state.yawSpeed);
+            const fwd = new THREE.Vector3(0, 0, -1); fwd.applyQuaternion(airplane.quaternion); airplane.position.add(fwd.multiplyScalar(state.speed * 0.1));
+            ocean.position.x = airplane.position.x; ocean.position.z = airplane.position.z;
+
+            if (isInGameMode) {
+                const returnBtn = document.getElementById('return-btn');
+                if (airplane.position.y < 0) { if (returnBtn.style.display === 'none' || returnBtn.style.display === '') returnBtn.style.display = 'flex'; } 
+                else { if (returnBtn.style.display === 'flex') returnBtn.style.display = 'none'; }
+            }
+
+            if (isInGameMode) {
+                if (airplane.position.y > 10000) {
+                    if (!state.isHighAltitude) { state.isHighAltitude = true; for (const key in loadedChunks) loadedChunks[key].visible = false; ocean.visible = false; pinGroup.visible = false; if(routeArrow) routeArrow.visible = false; }
+                } else {
+                    if (state.isHighAltitude) { state.isHighAltitude = false; for (const key in loadedChunks) loadedChunks[key].visible = true; ocean.visible = true; pinGroup.visible = true; if(isRouteActive && routeArrow) routeArrow.visible = true; }
+                }
+
+                if (!state.isHighAltitude) {
+                    // OTIMIZADO: 5 frames em vez de 20 para resposta quase instantânea ao virar
+                    chunkThrottle++; pinUpdateTimer++;
+                    if (chunkThrottle > 5) {
+                        chunkThrottle = 0; const cX = Math.floor(airplane.position.x / CHUNK_SIZE); const cZ = Math.floor(airplane.position.z / CHUNK_SIZE);
+                        const forwardVec = new THREE.Vector3(0, 0, -1).applyQuaternion(airplane.quaternion); forwardVec.y = 0; forwardVec.normalize();
+                        const rightVec = new THREE.Vector3(1, 0, 0).applyQuaternion(airplane.quaternion); rightVec.y = 0; rightVec.normalize();
+                        updateChunksDirectional(cX, cZ, forwardVec, rightVec);
+                    }
+                    if (pinUpdateTimer > 200) { pinUpdateTimer = 0; const ll = xzToLatLon(airplane.position.x, airplane.position.z); updatePins(ll.lat, ll.lon); }
+                }
+                
+                if (isRouteActive) updateRouteAndRadar();
+            }
+        }
+
+        function updateCamera() {
+            if (isInGameMode && !isPhotoMode) {
+                const camOff = new THREE.Vector3(0, 10 * configState.camZoom, 30 * configState.camZoom);
+                const dp = camOff.clone().applyQuaternion(airplane.quaternion).add(airplane.position); camera.position.lerp(dp, 0.1);
+                const lt = new THREE.Vector3(0, 0, -10).applyQuaternion(airplane.quaternion).add(airplane.position); camera.lookAt(lt);
+            } else { orbitControls.update(); }
+        }
+
+        function updateInstruments() {
+            if (!isInGameMode) return;
+            const euler = new THREE.Euler().setFromQuaternion(airplane.quaternion, 'YXZ');
+            const pitchDeg = THREE.MathUtils.radToDeg(euler.x); const rollDeg = THREE.MathUtils.radToDeg(euler.z);
+            let yawDeg = THREE.MathUtils.radToDeg(euler.y); yawDeg = (yawDeg + 360) % 360;
+            document.getElementById('spd-val').innerText = Math.round(state.speed * 10);
+            document.getElementById('alt-val').innerText = Math.round(airplane.position.y);
+            let dir = 'N';
+            if (yawDeg > 22.5 && yawDeg <= 67.5) dir = 'NE'; else if (yawDeg > 67.5 && yawDeg <= 112.5) dir = 'E';
+            else if (yawDeg > 112.5 && yawDeg <= 157.5) dir = 'SE'; else if (yawDeg > 157.5 && yawDeg <= 202.5) dir = 'S';
+            else if (yawDeg > 202.5 && yawDeg <= 247.5) dir = 'SW'; else if (yawDeg > 247.5 && yawDeg <= 292.5) dir = 'W';
+            else if (yawDeg > 292.5 && yawDeg <= 337.5) dir = 'NW';
+            document.getElementById('hdg-val').innerText = `${dir} ${Math.round(yawDeg)}°`;
+            
+            document.getElementById('compass-rot').style.transform = `rotate(${-yawDeg}deg)`;
+            document.getElementById('compass-hdg').innerText = `${dir} ${Math.round(yawDeg)}°`;
+
+            document.getElementById('att-rotate').style.transform = `translate(-50%, -50%) rotate(${-rollDeg}deg)`;
+            document.getElementById('att-pitch').style.transform = `translate(-50%, -50%) translateY(${pitchDeg * 2}px)`;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isInGameMode && !isPaused) { 
+                if (isAutopilotOn) updateAutopilot();
+                else updateInput(); 
+                updatePhysics(); 
+                updateInstruments(); 
+            }
+            updateCamera(); 
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+        // ==========================================================
+        // INICIALIZAÇÃO COM PRELOAD DE IMAGENS
+        // ==========================================================
+        applyLanguage('pt');
+        warmUpTTS(); 
+        
+        // Cria um overlay temporário de carregamento inicial
+        const initialLoader = document.createElement('div');
+        initialLoader.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:#000;color:#0f0;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:20px;z-index:999;';
+        initialLoader.innerText = 'CARREGANDO RECURSOS...';
+        document.body.appendChild(initialLoader);
+
+        // Inicia o preload das imagens e depois os assets do DB
+        preloadUIImages(uiImagesToPreload).then(() => {
+            console.log("Imagens da UI pré-carregadas com sucesso.");
+            initialLoader.remove();
+            document.getElementById('title-screen').style.display = 'flex';
+            
+            initAssets().then(() => { 
+                camera.position.set(0, 220, 50); 
+                orbitControls.target.copy(airplane.position); 
+                orbitControls.enabled = true; 
+                orbitControls.update(); 
+                animate(); 
+            });
+        });
+
+    </script>
+</body>
+</html>
