@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer"> <!-- ESSENCIAL PARA GITHUB PAGES NÃO BLOQUEAR OS MAPAS -->
     <title>Flight Open Simulator</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'MS Sans Serif', Arial, sans-serif; touch-action: none; }
@@ -569,8 +570,8 @@
         // ==========================================================
         // 2.1 FILA DE DOWNLOAD OTIMIZADA COM FALLBACK E TURBO
         // ==========================================================
-        const MAX_CONCURRENT_NORMAL = 10;  
-        const MAX_CONCURRENT_TURBO = 20;   
+        const MAX_CONCURRENT_NORMAL = 8;  // REDUZIDO PARA EVITAR BLOQUEIO NO GITHUB PAGES
+        const MAX_CONCURRENT_TURBO = 12;  // REDUZIDO PARA EVITAR BLOQUEIO NO GITHUB PAGES
         let isInitialLoading = false; 
         
         let activeDownloads = 0; const downloadQueue = []; const queuedSet = new Set(); 
@@ -1417,7 +1418,7 @@
             const dist = Math.sqrt(dx * dx + dz * dz);
 
             // 1. DIREÇÃO (ROLL) - Usando Vetores Direcionais para evitar "Gimbal Lock"
-            const forwardVec = new THREE.Vector3(0, 0, -1).applyQuaternion(airplane.quaternion);
+            const forwardVec = new THREE.Vector3(0,0,-1).applyQuaternion(airplane.quaternion);
             forwardVec.y = 0; 
             forwardVec.normalize();
             
