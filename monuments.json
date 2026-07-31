@@ -27,5 +27,23 @@
         "rotY": 0,
         "posY": 0,
         "color": "#274728"
+    },
+    {
+        "name": "Santorini",
+        "lat": 36.407111,
+        "lon": 25.456664,
+        "url": "https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/santorini_-_thera_greek_minoan_volcano_island.glb",
+        "scale": 0.0604,
+        "rotY": 0,
+        "posY": 0
+    },
+    {
+        "name": "Londres",
+        "lat": 51.507446,
+        "lon": -0.127765,
+        "url": "https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/city_of_london__3d_buildings__landmarks.glb",
+        "scale": 0.3226,
+        "rotY": 0,
+        "posY": 0
     }
 ]
