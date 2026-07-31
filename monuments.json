@@ -1,0 +1,18 @@
+[
+    {
+        "name": "Torre Eiffel ",
+        "lat": 48.85826,
+        "lon": 2.294501,
+        "url": "https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/torre_eiffel.glb",
+        "scale": 6.6667,
+        "rotY": 0
+    },
+    {
+        "name": "Sem Nome",
+        "lat": 40.689253,
+        "lon": -74.044548,
+        "url": "https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/torre_eiffel.glb",
+        "scale": 2.0667,
+        "rotY": 0
+    }
+]
