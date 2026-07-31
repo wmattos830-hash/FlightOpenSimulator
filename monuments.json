@@ -8,11 +8,12 @@
         "rotY": 0
     },
     {
-        "name": "Sem Nome",
+        "name": "Estátua da Liberdade",
         "lat": 40.689253,
         "lon": -74.044548,
-        "url": "https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/torre_eiffel.glb",
-        "scale": 2.0667,
-        "rotY": 0
+        "url": "https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/liberty.glb",
+        "scale": 16.7277,
+        "rotY": 0,
+        "posY": 0
     }
 ]
