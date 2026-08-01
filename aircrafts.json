@@ -1,0 +1,36 @@
+[
+    {
+        "id": "boeing_787_dreamliner",
+        "name": "Boeing 787 Dreamliner",
+        "price": 0,
+        "unlocked": true,
+        "url": "https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/modelo.glb",
+        "maxSpeed": 100,
+        "minSpeed": 20,
+        "pitchSpeed": 0.02,
+        "rollSpeed": 0.04,
+        "yawSpeed": 0.01,
+        "scale": 1,
+        "offsetX": 0,
+        "offsetY": 9,
+        "offsetZ": 0,
+        "rotY": 90
+    },
+    {
+        "id": "boeing_737",
+        "name": "Boeing 737",
+        "price": 0,
+        "unlocked": true,
+        "url": "https://cdn.jsdelivr.net/gh/wmattos830-hash/FlightOpenSimulator@main/modelo.glb",
+        "maxSpeed": 100,
+        "minSpeed": 20,
+        "pitchSpeed": 0.02,
+        "rollSpeed": 0.04,
+        "yawSpeed": 0.01,
+        "scale": 1,
+        "offsetX": 0,
+        "offsetY": 9,
+        "offsetZ": 0,
+        "rotY": 90
+    }
+]
